@@ -34,7 +34,6 @@ function ChatArea({ messages, loading }) {
     <div style={styles.chatArea}>
       {messages.length === 0 && (
         <div style={styles.emptyState}>
-          <div style={styles.emptyIcon}>📚</div>
           <div style={styles.emptyText}>Upload a PDF and start chatting with it</div>
         </div>
       )}

@@ -1,13 +1,6 @@
 import { useRef } from "react";
 import styles from "../constants/styles";
-
-const RECENTS = [
-  { name: "BEE654B-module-5.pdf", date: "Today" },
-  { name: "NPTEL-ML-week3.pdf", date: "Yesterday" },
-  { name: "DSA-notes-unit2.pdf", date: "2 days ago" },
-];
-
-function Sidebar({ activeRecent, setActiveRecent, onFileSelect }) {
+function Sidebar({ activeRecent, setActiveRecent, onFileSelect, recents = [], onNewChat }) {
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -19,8 +12,8 @@ function Sidebar({ activeRecent, setActiveRecent, onFileSelect }) {
     <div style={styles.sidebar}>
       {/* Logo */}
       <div style={styles.sidebarLogo}>
-        <div style={styles.logoIcon}>📄</div>
-        <span style={styles.logoText}>DocuMind</span>
+        <div style={styles.logoIcon} />   {/* empty div, styled as a small sage dot */}
+        <span style={styles.logoText}>Sage</span>
       </div>
 
       {/* Upload button */}
@@ -46,9 +39,32 @@ function Sidebar({ activeRecent, setActiveRecent, onFileSelect }) {
         onChange={handleFileChange}
       />
 
+      {/* New Chat */}
+        <button
+          style={{
+            ...styles.uploadBtn,
+            marginBottom: "4px",
+            color: "#7C9A7E",
+            borderColor: "#2a3a2c",
+            background: "transparent",
+          }}
+          onClick={() => {
+            setActiveRecent(null);
+            onNewChat();
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#1C2B1E";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+          }}
+        >
+          <span>+</span> New chat
+        </button>
+
       {/* Recents */}
-      <div style={styles.sidebarSection}>Recent</div>
-      {RECENTS.map((r, i) => (
+      <div style={styles.sidebarSection}>Threads</div>
+      {recents.map((r, i) => (
         <div
           key={i}
           style={{
@@ -57,12 +73,10 @@ function Sidebar({ activeRecent, setActiveRecent, onFileSelect }) {
           }}
           onClick={() => setActiveRecent(i)}
           onMouseEnter={(e) => {
-            if (activeRecent !== i)
-              e.currentTarget.style.background = "#1d1e22";
+            if (activeRecent !== i) e.currentTarget.style.background = "#1d1e22";
           }}
           onMouseLeave={(e) => {
-            if (activeRecent !== i)
-              e.currentTarget.style.background = "transparent";
+            if (activeRecent !== i) e.currentTarget.style.background = "transparent";
           }}
         >
           <div style={styles.recentName}>{r.name}</div>

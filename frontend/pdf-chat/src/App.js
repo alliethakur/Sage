@@ -13,6 +13,8 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [question, setQuestion] = useState("");
   const [activeRecent, setActiveRecent] = useState(null);
+  const [threads, setThreads] = useState([]);
+
 
   const handleFileSelect = async (selectedFile) => {
     setFile(selectedFile);
@@ -20,34 +22,55 @@ function App() {
     await uploadPDF(selectedFile);
     setLoading(false);
     setUploaded(true);
-    setMessages([
-      {
-        role: "assistant",
-        text: `PDF loaded. This document is "${selectedFile.name}". Ask me anything.`,
-        sources: [],
-      },
+    const initMsg = {
+      role: "assistant",
+      text: `"${selectedFile.name}" loaded. Ask me anything.`,
+      sources: [],
+    };
+    setMessages([initMsg]);
+    setThreads((prev) => [
+      { name: selectedFile.name, date: "Today", messages: [initMsg] },
+      ...prev,
     ]);
+    setActiveRecent(0);
   };
 
   const handleAsk = async () => {
     if (!question.trim()) return;
-    setMessages((prev) => [...prev, { role: "user", text: question, sources: [] }]);
+    const userMsg = { role: "user", text: question, sources: [] };
+    setMessages((prev) => [...prev, userMsg]);
     setQuestion("");
     setLoading(true);
     const data = await askQuestion(question);
-    setMessages((prev) => [
-      ...prev,
-      { role: "assistant", text: data.answer, sources: data.sources || [] },
-    ]);
+    const assistantMsg = { role: "assistant", text: data.answer, sources: data.sources || [] };
+    setMessages((prev) => [...prev, assistantMsg]);
+    setThreads((prev) =>
+      prev.map((t, i) =>
+        i === activeRecent
+          ? { ...t, messages: [...t.messages, userMsg, assistantMsg] }
+          : t
+      )
+    );
     setLoading(false);
+  };
+   const handleNewChat = () => {
+    setFile(null);
+    setUploaded(false);
+    setMessages([]);
+    setActiveRecent(null);
   };
 
   return (
     <div style={styles.root}>
       <Sidebar
         activeRecent={activeRecent}
-        setActiveRecent={setActiveRecent}
+        setActiveRecent={(i) => {
+           setActiveRecent(i);
+           if (i !== null && threads[i]) setMessages(threads[i].messages);
+         }}
         onFileSelect={handleFileSelect}
+        onNewChat={handleNewChat}
+        recents={threads}
       />
       <div style={styles.main}>
         <TopBar uploaded={uploaded} fileName={file?.name} />
