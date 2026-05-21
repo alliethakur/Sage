@@ -1,4 +1,4 @@
-# Sage 🌿
+# Sage 
 Chat with any PDF — semantic search, page citations, and agentic intent routing.
 
 ![Sage Demo](demo.png)
