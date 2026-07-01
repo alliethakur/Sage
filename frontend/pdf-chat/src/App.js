@@ -1,6 +1,6 @@
 import { useState } from "react";
 import styles from "./constants/styles";
-import { uploadPDF, askQuestion } from "./services/api";
+import { uploadPDF, askQuestion, summarizePDF } from "./services/api";
 import Sidebar from "./components/Sidebar";
 import TopBar from "./components/TopBar";
 import ChatArea from "./components/ChatArea";
@@ -14,14 +14,23 @@ function App() {
   const [question, setQuestion] = useState("");
   const [activeRecent, setActiveRecent] = useState(null);
   const [threads, setThreads] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
 
 
   const handleFileSelect = async (selectedFile) => {
     setFile(selectedFile);
     setLoading(true);
-    await uploadPDF(selectedFile);
-    setLoading(false);
+    const uploadResult = await uploadPDF(selectedFile);
+    if (uploadResult.error) {
+      setUploadError(uploadResult.error);
+      setLoading(false);
+      return;
+    }
     setUploaded(true);
+    const data = await summarizePDF();
+    setSummary(data.summary || null);
+    setLoading(false);
     const initMsg = {
       role: "assistant",
       text: `"${selectedFile.name}" loaded. Ask me anything.`,
@@ -42,6 +51,7 @@ function App() {
     setQuestion("");
     setLoading(true);
     const data = await askQuestion(question);
+    console.log(data);
     const assistantMsg = { role: "assistant", text: data.answer, sources: data.sources || [] };
     setMessages((prev) => [...prev, assistantMsg]);
     setThreads((prev) =>
@@ -58,6 +68,8 @@ function App() {
     setUploaded(false);
     setMessages([]);
     setActiveRecent(null);
+    setSummary(null);
+    setUploadError(null);
   };
 
   return (
@@ -68,12 +80,13 @@ function App() {
            setActiveRecent(i);
            if (i !== null && threads[i]) setMessages(threads[i].messages);
          }}
+        uploadError={uploadError}
         onFileSelect={handleFileSelect}
         onNewChat={handleNewChat}
         recents={threads}
       />
       <div style={styles.main}>
-        <TopBar uploaded={uploaded} fileName={file?.name} />
+        <TopBar uploaded={uploaded} fileName={file?.name} summary={summary} />
         <ChatArea messages={messages} loading={loading} />
         {uploaded && (
           <InputBar

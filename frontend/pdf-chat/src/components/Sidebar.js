@@ -1,18 +1,28 @@
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import styles from "../constants/styles";
-function Sidebar({ activeRecent, setActiveRecent, onFileSelect, recents = [], onNewChat }) {
+
+function Sidebar({ activeRecent, setActiveRecent, onFileSelect, recents = [], onNewChat, uploadError }) {
   const fileInputRef = useRef(null);
+  const [visibleError, setVisibleError] = useState(null);
+
+  useEffect(() => {
+    if (!uploadError) return;
+    setVisibleError(uploadError);
+    const t = setTimeout(() => setVisibleError(null), 5000);
+    return () => clearTimeout(t);
+  }, [uploadError]);
 
   const handleFileChange = (e) => {
     const f = e.target.files[0];
     if (f) onFileSelect(f);
+    e.target.value = "";
   };
 
   return (
     <div style={styles.sidebar}>
       {/* Logo */}
       <div style={styles.sidebarLogo}>
-        <div style={styles.logoIcon} />   {/* empty div, styled as a small sage dot */}
+        <div style={styles.logoIcon} />
         <span style={styles.logoText}>Sage</span>
       </div>
 
@@ -39,28 +49,46 @@ function Sidebar({ activeRecent, setActiveRecent, onFileSelect, recents = [], on
         onChange={handleFileChange}
       />
 
-      {/* New Chat */}
-        <button
+      {/* Error banner */}
+      {visibleError && (
+        <div
           style={{
-            ...styles.uploadBtn,
+            padding: "9px 12px",
+            background: "#2a1212",
+            border: "1px solid #5c2020",
+            borderRadius: "8px",
+            color: "#e07070",
+            fontSize: "12px",
+            lineHeight: "1.5",
             marginBottom: "4px",
-            color: "#7C9A7E",
-            borderColor: "#2a3a2c",
-            background: "transparent",
-          }}
-          onClick={() => {
-            setActiveRecent(null);
-            onNewChat();
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "#1C2B1E";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
           }}
         >
-          <span>+</span> New chat
-        </button>
+          {visibleError}
+        </div>
+      )}
+
+      {/* New Chat */}
+      {recents.length > 0 && <button
+        style={{
+          ...styles.uploadBtn,
+          marginBottom: "4px",
+          color: "#7C9A7E",
+          borderColor: "#2a3a2c",
+          background: "transparent",
+        }}
+        onClick={() => {
+          setActiveRecent(null);
+          onNewChat();
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "#1C2B1E";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = "transparent";
+        }}
+      >
+        <span>+</span> New chat
+      </button>}
 
       {/* Recents */}
       <div style={styles.sidebarSection}>Threads</div>
