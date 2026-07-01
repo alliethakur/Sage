@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import styles from "../constants/styles";
 
-function TopBar({ uploaded, fileName, summary }) {
+function TopBar({ uploaded, fileName, summary, staleName }) {
   const [open, setOpen] = useState(true);
   const [displayedText, setDisplayedText] = useState("");
   const [done, setDone] = useState(false);
@@ -38,8 +38,11 @@ function TopBar({ uploaded, fileName, summary }) {
     return () => clearInterval(interval);
   }, [summary]);
 
+  const stale = !uploaded && !!staleName;
   const cooking = uploaded && !summary;
-  const showPanel = cooking || !!summary;
+  const showPanel = cooking || !!summary || stale;
+
+  const displayName = uploaded ? fileName : staleName ? staleName : "No document loaded";
 
   return (
     <div>
@@ -50,11 +53,9 @@ function TopBar({ uploaded, fileName, summary }) {
             ...(uploaded ? {} : styles.statusDotIdle),
           }}
         />
-        <span style={styles.topBarName}>
-          {uploaded ? fileName : "No document loaded"}
-        </span>
+        <span style={styles.topBarName}>{displayName}</span>
         {uploaded && <span style={styles.topBarPages}>12 pages</span>}
-        {showPanel && (
+        {showPanel && !stale && (
           <button
             onClick={() => setOpen((o) => !o)}
             style={{
@@ -73,7 +74,7 @@ function TopBar({ uploaded, fileName, summary }) {
         )}
       </div>
 
-      {showPanel && open && (
+      {showPanel && (open || stale) && (
         <div
           style={{
             padding: "12px 24px",
@@ -84,7 +85,11 @@ function TopBar({ uploaded, fileName, summary }) {
             color: "#7a7b85",
           }}
         >
-          {cooking ? (
+          {stale ? (
+            <span style={{ color: "#4a4b55", fontStyle: "italic" }}>
+              Re-upload this PDF to ask questions about it.
+            </span>
+          ) : cooking ? (
             <span style={{ color: "#4a4b55", fontStyle: "italic" }}>
               Cooking your summary...
             </span>

@@ -16,9 +16,11 @@ function App() {
   const [threads, setThreads] = useState([]);
   const [summary, setSummary] = useState(null);
   const [uploadError, setUploadError] = useState(null);
+  const [staleName, setStaleName] = useState(null);
 
 
   const handleFileSelect = async (selectedFile) => {
+    setStaleName(null);
     setFile(selectedFile);
     setLoading(true);
     const uploadResult = await uploadPDF(selectedFile);
@@ -63,12 +65,14 @@ function App() {
     );
     setLoading(false);
   };
-   const handleNewChat = () => {
+  const handleNewChat = () => {
     setFile(null);
     setUploaded(false);
     setMessages([]);
+    setQuestion("");
     setActiveRecent(null);
     setSummary(null);
+    setStaleName(null);
     setUploadError(null);
   };
 
@@ -77,16 +81,21 @@ function App() {
       <Sidebar
         activeRecent={activeRecent}
         setActiveRecent={(i) => {
-           setActiveRecent(i);
-           if (i !== null && threads[i]) setMessages(threads[i].messages);
-         }}
+          setActiveRecent(i);
+          if (i !== null && threads[i]) {
+            setMessages(threads[i].messages);
+            setUploaded(false);
+            setSummary(null);
+            setStaleName(threads[i].name);
+          }
+        }}
         uploadError={uploadError}
         onFileSelect={handleFileSelect}
         onNewChat={handleNewChat}
         recents={threads}
       />
       <div style={styles.main}>
-        <TopBar uploaded={uploaded} fileName={file?.name} summary={summary} />
+        <TopBar uploaded={uploaded} fileName={file?.name} summary={summary} staleName={staleName} />
         <ChatArea messages={messages} loading={loading} />
         {uploaded && (
           <InputBar
