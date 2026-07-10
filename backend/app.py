@@ -7,6 +7,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from groq import Groq
+from langgraph.graph import StateGraph, END
+from typing import TypedDict
 import os
 import tempfile
 
@@ -69,14 +71,52 @@ def summarize():
 
     return jsonify({"summary": response.choices[0].message.content})
 
-@app.route("/ask", methods=["POST"])
-def ask():
+class AskState(TypedDict, total=False):
+    question: str
+    intent: str
+    answer: str
+    sources: list
+    error: str
+
+def classify_intent(state):
+    question = state["question"]
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{
+            "role": "user",
+            "content": (
+                "Classify the message below as exactly one word: "
+                "'casual' (greetings, small talk, thanks, or questions about what you can do) "
+                "or 'document_question' (anything that should be answered from an uploaded document). "
+                f"Reply with only that one word.\n\nMessage: {question}"
+            )
+        }]
+    )
+    label = response.choices[0].message.content.strip().lower()
+    intent = "casual" if "casual" in label else "document_question"
+    return {"intent": intent}
+
+def direct_answer(state):
+    question = state["question"]
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{
+            "role": "user",
+            "content": (
+                "You are Sage, a friendly document-chat assistant. Reply briefly and "
+                f"naturally to this message.\n\nMessage: {question}"
+            )
+        }]
+    )
+    return {"answer": response.choices[0].message.content, "sources": []}
+
+def retrieve_and_answer(state):
     global vectorstore
     if not vectorstore:
-        return jsonify({"error": "Please upload a PDF first"}), 400
-    
-    question = request.json.get("question")
-    
+        return {"error": "Please upload a PDF first"}
+
+    question = state["question"]
+
     # Find relevant chunks — fetch k=5 candidates then drop anything below the
     # relevance threshold (0 = no match, 1 = perfect). Scores are normalised
     # from FAISS L2 distance via 1/(1+distance), so 0.5 already means the
@@ -96,7 +136,7 @@ def ask():
         if "page" in d.metadata
     ])))
     sources = [f"PDF Page {p}" for p in sources]
-    
+
     # Send to Groq LLM
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
@@ -105,11 +145,31 @@ def ask():
             "content": f"Answer the question based on this context only.\n\nContext: {context}\n\nQuestion: {question}"
         }]
     )
-    
-    return jsonify({
-    "answer": response.choices[0].message.content,
-    "sources": sources
+
+    return {"answer": response.choices[0].message.content, "sources": sources}
+
+graph = StateGraph(AskState)
+graph.add_node("classify_intent", classify_intent)
+graph.add_node("direct_answer", direct_answer)
+graph.add_node("retrieve_and_answer", retrieve_and_answer)
+graph.set_entry_point("classify_intent")
+graph.add_conditional_edges("classify_intent", lambda state: state["intent"], {
+    "casual": "direct_answer",
+    "document_question": "retrieve_and_answer"
 })
+graph.add_edge("direct_answer", END)
+graph.add_edge("retrieve_and_answer", END)
+ask_graph = graph.compile()
+
+@app.route("/ask", methods=["POST"])
+def ask():
+    question = request.json.get("question")
+    result = ask_graph.invoke({"question": question})
+
+    if "error" in result:
+        return jsonify({"error": result["error"]}), 400
+
+    return jsonify({"answer": result["answer"], "sources": result["sources"]})
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
