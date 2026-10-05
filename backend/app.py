@@ -165,6 +165,7 @@ def upload():
         "message": "PDF uploaded and processed successfully",
         "doc_id": doc_id,
         "pages": len(pages),
+        "chunks": len(chunks),
     })
 
 @app.route("/summarize", methods=["POST"])

@@ -1,46 +1,27 @@
-import styles from "../constants/styles";
-
 function InputBar({ question, setQuestion, onSend, loading }) {
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") onSend();
+  const handleKeyDown = (e) => {
+    // Enter sends, Shift+Enter makes a new line
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      onSend();
+    }
   };
 
   return (
-    <div style={styles.inputBar}>
-      <input
-        type="text"
-        placeholder="Ask anything about your PDF..."
-        value={question}
-        onChange={(e) => setQuestion(e.target.value)}
-        onKeyPress={handleKeyPress}
-        style={styles.input}
-        onFocus={(e) => (e.target.style.borderColor = "#5a4fcf")}
-        onBlur={(e) => (e.target.style.borderColor = "#2a2b32")}
-      />
-      <button
-        onClick={onSend}
-        disabled={loading}
-        style={{
-          ...styles.sendBtn,
-          opacity: loading ? 0.5 : 1,
-        }}
-        onMouseEnter={(e) => !loading && (e.currentTarget.style.transform = "scale(1.08)")}
-        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-      >
-        <svg
-          width="15"
-          height="15"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="white"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <line x1="22" y1="2" x2="11" y2="13" />
-          <polygon points="22 2 15 22 11 13 2 9 22 2" />
-        </svg>
-      </button>
+    <div className="composer">
+      <div className="input">
+        <textarea
+          rows={1}
+          placeholder="Ask about this document…"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+        <button className="send" onClick={onSend} disabled={loading || !question.trim()} title="Send">
+          ↑
+        </button>
+      </div>
+      <div className="hint">Answers come only from your document. If it isn't there, Sage says so.</div>
     </div>
   );
 }

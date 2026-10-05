@@ -1,5 +1,4 @@
 import { useRef, useEffect, useState } from "react";
-import styles from "../constants/styles";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -13,149 +12,151 @@ function normalizeMath(text) {
     .replace(/\\\(([\s\S]+?)\\\)/g, (_, m) => `$${m}$`);
 }
 
-// Tighter paragraph spacing inside chat bubbles
-const mdComponents = {
-  p: ({ node, ...props }) => <p style={{ margin: "0 0 8px" }} {...props} />,
+// Turn citation markers like [1] into special links, rendered as clickable chips below
+function linkCitations(text) {
+  return text.replace(/\[(\d+)\](?!\()/g, (_, n) => `[${n}](#cite-${n})`);
+}
+
+const ROUTE_LABELS = {
+  document_question: "hybrid search",
+  overview: "start of document",
+  casual: "no search needed",
 };
 
-function CopyButton({ text }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+function Answer({ msg, index, activeCite, isShown, onCite }) {
+  const components = {
+    a: ({ href, children }) => {
+      if (href?.startsWith("#cite-")) {
+        const n = Number(href.slice(6));
+        return (
+          <button
+            className={`cite ${isShown && activeCite === n ? "on" : ""}`}
+            onClick={() => onCite(index, n)}
+            title="Show this source"
+          >
+            {n}
+          </button>
+        );
+      }
+      return <a href={href} target="_blank" rel="noreferrer">{children}</a>;
+    },
   };
 
   return (
-    <button
-      onClick={handleCopy}
-      title="Copy response"
-      style={{
-        position: "absolute",
-        top: "8px",
-        right: "8px",
-        background: "none",
-        border: "none",
-        cursor: "pointer",
-        padding: "2px",
-        borderRadius: "4px",
-        color: copied ? "#7C9A7E" : "#3e3f49",
-        fontSize: "11px",
-        fontFamily: "inherit",
-        lineHeight: 1,
-        transition: "color 0.15s",
-        display: "flex",
-        alignItems: "center",
-        gap: "3px",
-      }}
-    >
-      {copied ? (
-        "Copied! ✓"
-      ) : (
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-        </svg>
-      )}
-    </button>
-  );
-}
-
-const LOADING_MESSAGES = [
-  "Searching your document...",
-  "Reading relevant pages...",
-  "Generating answer...",
-];
-
-function LoadingIndicator() {
-  const [msgIndex, setMsgIndex] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMsgIndex((i) => (i + 1) % LOADING_MESSAGES.length);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div style={{ ...styles.thinking, gap: "10px" }}>
-      <div style={{ display: "flex", gap: "4px" }}>
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            style={{ ...styles.dot, animationDelay: `${i * 0.18}s` }}
-          />
-        ))}
-      </div>
-      <span style={{ fontSize: "12.5px", color: "#4a4b55" }}>
-        {LOADING_MESSAGES[msgIndex]}
-      </span>
-      <style>{`
-        @keyframes bounce {
-          0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
-          40% { transform: translateY(-5px); opacity: 1; }
-        }
-      `}</style>
+    <div className="answer">
+      <ReactMarkdown components={components} remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+        {linkCitations(normalizeMath(msg.text))}
+      </ReactMarkdown>
     </div>
   );
 }
 
-function ChatArea({ messages, loading }) {
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(text.replace(/\[\d+\]/g, "")); // copy without citation numbers
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return <button onClick={copy}>{copied ? "Copied ✓" : "Copy"}</button>;
+}
+
+// Types the summary out once, right after upload; afterwards it shows instantly
+function Summary({ text, alreadyShown, onShown }) {
+  const [shown, setShown] = useState(alreadyShown ? text : "");
+  const [open, setOpen] = useState(true);
+
+  useEffect(() => {
+    if (!text) return;
+    if (alreadyShown) {
+      setShown(text);
+      return;
+    }
+    let i = 0;
+    const timer = setInterval(() => {
+      i += 3;
+      setShown(text.slice(0, i));
+      if (i >= text.length) {
+        clearInterval(timer);
+        onShown();
+      }
+    }, 16);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text]);
+
+  return (
+    <div className="summary">
+      <div className="summary-title">
+        SUMMARY
+        <button className="summary-toggle" onClick={() => setOpen((o) => !o)}>{open ? "Hide" : "Show"}</button>
+      </div>
+      {open && (text ? shown : "Writing a summary…")}
+    </div>
+  );
+}
+
+const LOADING_MESSAGES = ["Searching your document…", "Reading the best chunks…", "Writing the answer…"];
+
+function Thinking() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((x) => (x + 1) % LOADING_MESSAGES.length), 1100);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="thinking fade-up">
+      <div className="bounce"><span /><span /><span /></div>
+      {LOADING_MESSAGES[i]}
+    </div>
+  );
+}
+
+function ChatArea({ thread, loading, shownIndex, activeCite, onCite, onSelectMessage, onSummaryShown }) {
   const bottomRef = useRef(null);
+  const { messages } = thread;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages.length, loading]);
 
   return (
-    <div style={styles.chatArea}>
-      {messages.length === 0 && (
-        <div style={styles.emptyState}>
-          <div style={styles.emptyText}>Upload a PDF and start chatting with it</div>
-        </div>
-      )}
+    <div className="messages">
+      <Summary
+        key={thread.id}
+        text={thread.summary}
+        alreadyShown={thread.summaryShown}
+        onShown={onSummaryShown}
+      />
 
-      <style>{`
-        @keyframes fadeSlideUp {
-          from { opacity: 0; transform: translateY(10px); }
-          to   { opacity: 1; transform: translateY(0);    }
-        }
-      `}</style>
-
-      {messages.map((msg, i) => (
-        <div key={i} style={{ ...styles.msgRow(msg.role), animation: "fadeSlideUp 300ms ease-out" }}>
-          <div
-            style={{
-              ...styles.bubble(msg.role),
-              ...(msg.role === "assistant" ? { position: "relative", paddingRight: "32px" } : {}),
-            }}
-          >
-            {msg.role === "assistant" && <CopyButton text={msg.text} />}
-            {msg.role === "assistant" ? (
-              <div>
-                <ReactMarkdown
-                  components={mdComponents}
-                  remarkPlugins={[remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
-                >
-                  {normalizeMath(msg.text)}
-                </ReactMarkdown>
+      {messages.map((msg, i) =>
+        msg.role === "user" ? (
+          <div key={i} className="msg user fade-up">{msg.text}</div>
+        ) : (
+          <div key={i} className={`msg bot fade-up ${i === shownIndex && msg.evidence?.length ? "selected" : ""}`}>
+            {msg.route && (
+              <div className="route">
+                route → <b>{msg.route}</b> · {ROUTE_LABELS[msg.route] || ""}
+                {msg.evidence?.length ? ` · ${msg.evidence.length} chunks` : ""}
               </div>
-            ) : (
-              <p style={{ margin: 0 }}>{msg.text}</p>
             )}
-            {msg.sources.length > 0 && (
-              <div style={styles.sourceTag}>
-                <span>□</span>
-                {msg.sources.join(", ")}
+            <Answer msg={msg} index={i} activeCite={activeCite} isShown={i === shownIndex} onCite={onCite} />
+            {msg.query && !msg.isError && (
+              <div className="actions">
+                <CopyButton text={msg.text} />
+                {msg.evidence?.length > 0 && (
+                  <button onClick={() => onSelectMessage(i)}>
+                    {msg.evidence.filter((e) => e.cited).length} of {msg.evidence.length} sources cited
+                  </button>
+                )}
+                {msg.sources?.length > 0 && <span>{msg.sources.join(", ")}</span>}
               </div>
             )}
           </div>
-        </div>
-      ))}
+        )
+      )}
 
-      {loading && <LoadingIndicator />}
+      {loading && <Thinking />}
       <div ref={bottomRef} />
     </div>
   );
