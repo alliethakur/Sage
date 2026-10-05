@@ -9,6 +9,7 @@ from groq import Groq
 from langgraph.graph import StateGraph, END
 from typing import TypedDict
 from rank_bm25 import BM25Okapi
+import snowballstemmer
 import groq
 import json
 import time
@@ -58,15 +59,19 @@ STOPWORDS = {
     "about", "into", "than", "then", "there", "set", "paper",
 }
 
+# Stemming reduces words to their root so "vanishes", "vanished" and "vanishing" all
+# match "vanish". Without it, the eval showed keyword search missing obvious passages.
+STEMMER = snowballstemmer.stemmer("english")
+
 def tokenize(text):
-    """Lowercase words for BM25. 'd_model' also adds 'dmodel', matching how PDFs often extract it."""
+    """Lowercase, stemmed words for BM25. 'd_model' also adds 'dmodel', matching how PDFs often extract it."""
     tokens = []
     for word in re.findall(r"[a-z0-9_]+", text.lower()):
         parts = [p for p in word.split("_") if p]
         if len(parts) > 1:
             tokens.append("".join(parts))
         tokens.extend(parts)
-    return [t for t in tokens if t not in STOPWORDS]
+    return STEMMER.stemWords([t for t in tokens if t not in STOPWORDS])
 
 
 # ---------- Document storage ----------
@@ -269,6 +274,14 @@ TABLE_WORDS = re.compile(
     re.IGNORECASE,
 )
 
+# Words that almost always mean "a question about the whole document"
+OVERVIEW_WORDS = re.compile(
+    r"\b(authors?|who wrote (this|the) (paper|document|book|article)|title of (this|the)|"
+    r"main (idea|point|topic|contribution)|summar(y|ise|ize)|"
+    r"what is (this|the) (paper|document|book|file|article) about)\b",
+    re.IGNORECASE,
+)
+
 def classify_intent(state):
     question = state["question"]
     doc = load_document(state["doc_id"])
@@ -292,9 +305,16 @@ def classify_intent(state):
     ).strip().lower().strip(".'\"")
     allowed = ("casual", "overview", "table_query") if is_table else ("casual", "overview")
     intent = label if label in allowed else "document_question"
-    # Safety net: for tables, calculation words override a "document_question" label
-    if is_table and intent == "document_question" and TABLE_WORDS.search(question):
-        intent = "table_query"
+    # Safety nets: simple rules that override the classifier when it's clearly wrong
+    if intent == "document_question":
+        if is_table:
+            df = get_table(state["doc_id"], doc)
+            # calculation words, or a lookup like "fare of passenger 2" (a column + a number)
+            mentions_column = bool(tables.unused_columns({}, question, df))
+            if TABLE_WORDS.search(question) or (re.search(r"\d", question) and mentions_column):
+                intent = "table_query"
+        elif OVERVIEW_WORDS.search(question):
+            intent = "overview"
     debug(f"[route] {question!r} -> {intent} (model said: {label!r})")
     return {"intent": intent}
 

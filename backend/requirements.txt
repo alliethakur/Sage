@@ -12,3 +12,4 @@ pypdf
 langgraph
 rank-bm25
 pandas
+snowballstemmer
