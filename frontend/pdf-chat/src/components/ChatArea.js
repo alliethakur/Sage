@@ -55,8 +55,22 @@ function Answer({ msg, index, activeCite, isShown, onCite }) {
 
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(text.replace(/\[\d+\]/g, "")); // copy without citation numbers
+  const copy = async () => {
+    const clean = text.replace(/\[\d+\]/g, ""); // copy without citation numbers
+    try {
+      // Modern clipboard API: only available on https:// pages and localhost
+      await navigator.clipboard.writeText(clean);
+    } catch {
+      // Fallback for plain http:// pages (e.g. opening Sage via 192.168.x.x)
+      const box = document.createElement("textarea");
+      box.value = clean;
+      box.style.position = "fixed";
+      box.style.opacity = "0";
+      document.body.appendChild(box);
+      box.select();
+      document.execCommand("copy");
+      document.body.removeChild(box);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };

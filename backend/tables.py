@@ -43,8 +43,59 @@ Reply with ONLY the JSON, using exactly these keys:
   "sort": {"column": "<column>", "descending": true|false} or null,
   "limit": <number of rows to return, at most 20>
 }
-Use "list" to return matching rows (for example to look up one row's values).
-Use [] for no filters. Column names must match the table exactly."""
+Rules:
+- Every condition in the question needs its own filter. Words like "survived",
+  "female", "in class 1" or "older than 30" are conditions, even when the question
+  also asks to group or count.
+- Use "list" to return matching rows (for example to look up one row's values).
+- Use [] for filters only when the question has no conditions at all.
+- Column names must match the table exactly.
+
+Examples (for a table with columns Name, Dept, Salary, Active):
+Q: How many active employees are in each department?
+{"filters": [{"column": "Active", "op": "==", "value": 1}], "group_by": "Dept",
+ "aggregate": "count", "column": null, "sort": null, "limit": 20}
+Q: What is the average salary of people in Sales?
+{"filters": [{"column": "Dept", "op": "==", "value": "Sales"}], "group_by": null,
+ "aggregate": "mean", "column": "Salary", "sort": null, "limit": 20}
+Q: Who earns the most?
+{"filters": [], "group_by": null, "aggregate": "list", "column": null,
+ "sort": {"column": "Salary", "descending": true}, "limit": 1}"""
+
+
+def describe_plan(plan):
+    """The plan in plain words, so the answer can say exactly what was computed."""
+    filters = plan.get("filters") or []
+    conditions = " AND ".join(f"{f.get('column')} {f.get('op')} {f.get('value')!r}" for f in filters)
+    parts = [f"Filters applied: {conditions}" if conditions else "Filters applied: NONE (all rows were used)"]
+    if plan.get("group_by"):
+        parts.append(f"grouped by {plan['group_by']}")
+    aggregate = plan.get("aggregate") or "list"
+    parts.append(f"calculation: {aggregate}" + (f"({plan['column']})" if plan.get("column") else ""))
+    return "; ".join(parts)
+
+
+def unused_columns(plan, question, df):
+    """Columns the question mentions that the plan never uses, e.g. 'survived' -> Survived.
+    These usually mean the planner forgot a condition."""
+    words = [w for w in re.findall(r"[a-z0-9]+", question.lower()) if len(w) >= 4]
+    has_number = bool(re.search(r"\d", question))
+    used = {plan.get("group_by"), plan.get("column"), (plan.get("sort") or {}).get("column")}
+    used |= {f.get("column") for f in plan.get("filters") or []}
+    missing = []
+    for col in df.columns:
+        name = col.lower()
+        if col in used or len(name) < 3:
+            continue
+        # ID columns ("PassengerId") only matter when the question gives a number
+        if name.endswith("id") and not has_number:
+            continue
+        # same word ("sex"), shared stem ("survived" ~ "survival"), or contained ("class" in "pclass")
+        if name in question.lower().split() or any(
+            w.startswith(name[:5]) or name.startswith(w[:5]) or w in name for w in words
+        ):
+            missing.append(col)
+    return missing
 
 
 def parse_plan(text):

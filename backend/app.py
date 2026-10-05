@@ -236,7 +236,7 @@ FORMAT_RULES = (
 # Errors worth retrying: Groq busy/over capacity (5xx), rate limits (429), network problems
 RETRYABLE = (groq.InternalServerError, groq.RateLimitError, groq.APIConnectionError, groq.APITimeoutError)
 
-def ask_llm(prompt, fast=False):
+def ask_llm(prompt, fast=False, effort="low"):
     """Call Groq with retries (waiting 1s, then 2s) and fall back to the smaller model
     if the main one stays unavailable. fast=True uses the small model directly."""
     models = [FAST_MODEL] if fast else [MODEL, FAST_MODEL]
@@ -244,7 +244,7 @@ def ask_llm(prompt, fast=False):
     for model in models:
         for attempt in range(3):
             try:
-                extra = {"reasoning_effort": "low"} if "gpt-oss" in model else {}
+                extra = {"reasoning_effort": effort} if "gpt-oss" in model else {}
                 response = client.chat.completions.create(
                     model=model,
                     messages=[{"role": "user", "content": prompt}],
@@ -479,8 +479,22 @@ def table_answer(state):
 
     try:
         plan = tables.parse_plan(ask_llm(
-            f"{tables.PLAN_INSTRUCTIONS}\n\nTable:\n{tables.describe(df)}\n\nQuestion: {question}"
+            f"{tables.PLAN_INSTRUCTIONS}\n\nTable:\n{tables.describe(df)}\n\nQuestion: {question}",
+            effort="medium",  # planning needs more care than phrasing an answer
         ))
+        # Self-check: the question mentions a column the plan never uses -> probably a
+        # forgotten condition. Send the plan back once with that feedback.
+        missing = tables.unused_columns(plan, question, df)
+        if missing:
+            debug(f"[table] plan ignores {missing}; asking for a corrected plan")
+            plan = tables.parse_plan(ask_llm(
+                f"{tables.PLAN_INSTRUCTIONS}\n\nTable:\n{tables.describe(df)}\n\nQuestion: {question}\n\n"
+                f"Your previous plan was: {json.dumps(plan)}\n"
+                f"The question mentions {', '.join(missing)}, but the plan never uses "
+                f"{'it' if len(missing) == 1 else 'them'}. If that is a condition in the question, "
+                "add a filter for it. Reply with the corrected JSON plan only.",
+                effort="medium",
+            ))
         result = tables.run_plan(df, plan)
     except Exception as e:
         # A bad plan shouldn't break the chat: fall back to normal search
@@ -488,7 +502,9 @@ def table_answer(state):
         return {**retrieve_and_answer(state), "intent": "document_question"}
     debug(f"[table] plan={plan} matched={result['matched_rows']}")
 
-    # Describe the result in plain words (raw JSON tempted the model to invent "Row 1")
+    # Describe the result in plain words (raw JSON tempted the model to invent "Row 1"),
+    # including exactly which filters ran, so a wrong plan can't be passed off as right
+    computed = tables.describe_plan(plan)
     if result["kind"] == "value":
         result_text = f"{result['label']} = {result['value']} (computed over all {result['total_rows']} rows)"
         rows_hint = "Do not mention row numbers. "
@@ -507,9 +523,13 @@ def table_answer(state):
         "over the full table. Give the direct answer first in 1-3 sentences, with no "
         "heading. Use a small table only if there are several rows or groups. "
         + rows_hint +
+        "Describe exactly what was computed: never say a filter was applied unless it is "
+        "listed under 'Filters applied'. If the computation doesn't match the question "
+        "(for example a condition from the question is missing), say what was actually "
+        "computed and that it may not fully answer the question. "
         "Do not add citation markers. If the result doesn't answer the question, "
         f"reply exactly: \"{REFUSAL_MESSAGE}\" {FORMAT_RULES}\n\nQuestion: {question}\n"
-        f"Result: {result_text}"
+        f"What was computed: {computed}\nResult: {result_text}"
     )
     answer = re.sub(r"【[^】]*】", "", answer).strip()  # drop stray GPT-OSS-style markers
     summary = f"Table query · {result['matched_rows']:,} of {result['total_rows']:,} rows matched"
