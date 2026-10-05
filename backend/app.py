@@ -197,6 +197,7 @@ class AskState(TypedDict, total=False):
     intent: str
     answer: str
     sources: list
+    evidence: list   # chunks shown in the Evidence panel (retrieval route only)
     error: str
 
 REFUSAL_MESSAGE = "I couldn't find this in the document."
@@ -240,7 +241,7 @@ def direct_answer(state):
         "to ask about their uploaded document."
         f"\n\nMessage: {state['question']}"
     )
-    return {"answer": answer, "sources": []}
+    return {"answer": answer, "sources": [], "evidence": []}
 
 def overview_answer(state):
     """Whole-document questions (main idea, authors, title). Small chunks can't answer
@@ -267,7 +268,39 @@ def overview_answer(state):
     )
     if REFUSAL_MESSAGE.lower() in answer.lower():
         sources = []
-    return {"answer": answer, "sources": sources}
+    return {"answer": answer, "sources": sources, "evidence": []}
+
+def find_citations(answer, count):
+    """Return the chunk numbers the answer cites, e.g. 'GPUs [1][3]' or '[1, 3]' -> [1, 3]."""
+    cited = []
+    for group in re.findall(r"\[(\d+(?:\s*,\s*\d+)*)\]", answer):
+        for n in group.split(","):
+            n = int(n)
+            if 1 <= n <= count and n not in cited:
+                cited.append(n)
+    return sorted(cited)
+
+def normalize_citations(answer):
+    """Turn '【1】', '【1†L3】' (GPT-OSS style) and '[1, 3]' into '[1]' / '[1][3]'
+    so the frontend only has one format to handle."""
+    answer = re.sub(r"【\s*(\d+(?:\s*,\s*\d+)*)[^】]*】", r"[\1]", answer)
+    return re.sub(
+        r"\[(\d+(?:\s*,\s*\d+)+)\]",
+        lambda m: "".join(f"[{n.strip()}]" for n in m.group(1).split(",")),
+        answer,
+    )
+
+def cosine_scores(store, question, chunk_ids, doc_id):
+    """Meaning similarity (cosine) between the question and each chunk, for display."""
+    saved = store.get(ids=[f"{doc_id}-{i}" for i in chunk_ids], include=["embeddings", "metadatas"])
+    by_id = {md["chunk_id"]: emb for md, emb in zip(saved["metadatas"], saved["embeddings"])}
+    q = embeddings.embed_query(question)
+    q_norm = sum(x * x for x in q) ** 0.5 or 1.0
+    scores = {}
+    for cid, emb in by_id.items():
+        e_norm = sum(x * x for x in emb) ** 0.5 or 1.0
+        scores[cid] = sum(a * b for a, b in zip(q, emb)) / (q_norm * e_norm)
+    return scores
 
 def retrieve_and_answer(state):
     doc = load_document(state["doc_id"])
@@ -301,7 +334,7 @@ def retrieve_and_answer(state):
     # Early refusal: no shared keywords AND weak meaning match -> clearly off-topic.
     # Everything else goes to the LLM, which refuses if the chunks lack the answer.
     if not bm25_ids and best_cosine < MIN_COSINE:
-        return {"answer": REFUSAL_MESSAGE, "sources": []}
+        return {"answer": REFUSAL_MESSAGE, "sources": [], "evidence": []}
 
     # 3. Reciprocal Rank Fusion: a chunk ranked high in either list scores high
     fused = {}
@@ -312,21 +345,58 @@ def retrieve_and_answer(state):
     relevant_docs = [chunks[i] for i in top_ids]
     debug(f"[fused] ids={top_ids}, top chunk={relevant_docs[0].page_content[:100]!r}")
 
+    # Number the chunks [1]..[n] so the model can cite exactly which one it used.
     # Note: 'page' is the 0-indexed physical page position in the PDF file,
     # not the printed page number — they differ when a PDF has a cover, ToC,
     # or Roman-numeral front matter before the main content.
-    context = "\n".join(d.page_content for d in relevant_docs)
-    sources = [f"PDF Page {p}" for p in sorted({d.metadata["page"] + 1 for d in relevant_docs})]
+    context = "\n\n".join(
+        f"[{n}] (page {d.metadata['page'] + 1})\n{d.page_content}"
+        for n, d in enumerate(relevant_docs, start=1)
+    )
 
     answer = ask_llm(
-        "Answer the question using ONLY the context below. "
+        "Answer the question using ONLY the numbered context chunks below. "
+        "After each fact, cite the chunk it came from with its number in square brackets, "
+        "like [1] or [2][3]. Only cite chunks that actually support the fact. "
         "If the context does not contain the answer, reply exactly: "
         f"\"{REFUSAL_MESSAGE}\" {FORMAT_RULES}\n\n"
-        f"Context: {context}\n\nQuestion: {question}"
+        f"Context:\n{context}\n\nQuestion: {question}"
     )
-    if REFUSAL_MESSAGE.lower() in answer.lower():
-        sources = []  # don't cite pages for an answer we didn't give
-    return {"answer": answer, "sources": sources}
+    answer = normalize_citations(answer)
+    refused = REFUSAL_MESSAGE.lower() in answer.lower()
+    cited = [] if refused else find_citations(answer, len(relevant_docs))
+    # Drop citation numbers that don't match any chunk (e.g. a made-up [9])
+    answer = re.sub(r"\[(\d+)\]",
+                    lambda m: m.group(0) if 1 <= int(m.group(1)) <= len(relevant_docs) else "",
+                    answer)
+
+    # Evidence for the frontend panel: every retrieved chunk, how it was found,
+    # its scores, and whether the answer actually cited it.
+    meaning = cosine_scores(doc["store"], question, top_ids, state["doc_id"])
+    max_bm25 = max(bm25_scores, default=0) or 1.0
+    evidence = []
+    for n, (chunk_id, d) in enumerate(zip(top_ids, relevant_docs), start=1):
+        found_by = []
+        if chunk_id in bm25_ids:
+            found_by.append("keyword")
+        if chunk_id in dense_ids[:TOP_K]:
+            found_by.append("meaning")
+        evidence.append({
+            "n": n,
+            "page": d.metadata["page"] + 1,
+            "text": d.page_content,
+            "found_by": found_by,
+            "meaning_score": round(float(meaning.get(chunk_id, 0.0)), 3),
+            "keyword_score": round(float(bm25_scores[chunk_id]) / max_bm25, 3),
+            "cited": n in cited,
+        })
+    debug(f"[cited] {cited}")
+
+    # Page citations: pages of the cited chunks (or all retrieved ones if the
+    # model answered without citing anything)
+    used = [e for e in evidence if e["cited"]] or ([] if refused else evidence)
+    sources = [f"PDF Page {p}" for p in sorted({e["page"] for e in used})]
+    return {"answer": answer, "sources": sources, "evidence": evidence}
 
 graph = StateGraph(AskState)
 graph.add_node("classify_intent", classify_intent)
@@ -363,7 +433,12 @@ def ask():
     if "error" in result:
         return jsonify({"error": result["error"]}), 400
 
-    return jsonify({"answer": result["answer"], "sources": result["sources"]})
+    return jsonify({
+        "answer": result["answer"],
+        "sources": result["sources"],
+        "route": result.get("intent"),
+        "evidence": result.get("evidence", []),
+    })
 
 if __name__ == "__main__":
     app.run(debug=os.getenv("FLASK_DEBUG") == "1", port=5000, use_reloader=False)
