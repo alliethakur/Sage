@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sage UI Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* light side: sidebar + chat */
+    --bg: #f6f6f3;
+    --panel: #ffffff;
+    --panel-2: #f0f0ec;
+    --line: #e2e2dc;
+    --line-soft: #ecece7;
+    --text: #1b1c1e;
+    --text-2: #5b5d63;
+    --text-3: #9a9ca3;
+    --accent: #4f7a53;
+    --accent-soft: rgba(79,122,83,.10);
+    --accent-line: rgba(79,122,83,.35);
+    /* dark side: evidence panel */
+    --ev-bg: #1a1b1d;
+    --ev-card: #222326;
+    --ev-line: #34353a;
+    --ev-text: #e8e8ea;
+    --ev-text-2: #b2b3ba;
+    --ev-text-3: #6c6d76;
+    --ev-accent: #8fb592;
+    --kw: #e0bf72;
+    --kw-soft: rgba(224,191,114,.15);
+    --mean: #8db3e6;
+    --mean-soft: rgba(141,179,230,.15);
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: 'DM Sans', 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.55;
+  }
+  .app { display: grid; grid-template-columns: 240px 1fr 380px; height: 100vh; }
+
+  /* Sidebar */
+  .sidebar { background: var(--bg); border-right: 1px solid var(--line-soft); padding: 18px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; padding: 2px 6px 16px; }
+  .logo-mark { width: 22px; height: 22px; border-radius: 7px; background: linear-gradient(135deg, #7C9A7E, var(--accent)); }
+  .btn { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+  .btn:hover { border-color: #cfcfc8; }
+  .btn.ghost { background: transparent; color: var(--accent); border-color: var(--accent-line); }
+  .section { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); padding: 18px 8px 6px; }
+  .thread { padding: 9px 10px; border-radius: 9px; cursor: pointer; }
+  .thread:hover { background: var(--panel-2); }
+  .thread.active { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+  .thread .name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .thread .meta { font-size: 11px; color: var(--text-3); }
+
+  /* Chat */
+  .chat { background: var(--panel); display: flex; flex-direction: column; min-width: 0; }
+  .topbar { display: flex; align-items: center; gap: 10px; padding: 14px 28px; border-bottom: 1px solid var(--line-soft); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #22a35a; box-shadow: 0 0 0 3px rgba(34,163,90,.15); }
+  .doc-name { font-weight: 600; }
+  .pill { font-size: 11px; color: var(--text-2); border: 1px solid var(--line); padding: 2px 8px; border-radius: 999px; }
+  .messages { flex: 1; overflow-y: auto; padding: 28px; display: flex; flex-direction: column; gap: 18px; }
+  .summary { border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 14px 16px; color: var(--text-2); font-size: 13px; }
+  .summary b { color: var(--text); font-weight: 600; display: block; margin-bottom: 4px; font-size: 12px; letter-spacing: .02em; }
+  .msg { max-width: 640px; }
+  .msg.user { align-self: flex-end; background: var(--panel-2); padding: 10px 14px; border-radius: 14px 14px 4px 14px; }
+  .msg.bot { align-self: flex-start; }
+  .route { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10.5px; color: var(--text-3); margin-bottom: 6px; }
+  .route span { color: var(--accent); }
+  .cite { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; margin: 0 1px; border-radius: 5px; font-size: 10.5px; font-weight: 600; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-line); cursor: pointer; vertical-align: 1px; }
+  .cite:hover, .cite.on { background: var(--accent); color: #fff; }
+  .actions { display: flex; gap: 14px; margin-top: 8px; font-size: 11.5px; color: var(--text-3); }
+  .composer { padding: 16px 28px 22px; }
+  .input { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 2px 10px rgba(0,0,0,.04); border-radius: 14px; padding: 10px 10px 10px 16px; }
+  .input input { flex: 1; background: none; border: 0; outline: 0; color: var(--text); font: inherit; }
+  .send { width: 32px; height: 32px; border-radius: 9px; border: 0; background: var(--accent); color: #fff; font-size: 16px; cursor: pointer; }
+  .hint { font-size: 11px; color: var(--text-3); margin-top: 8px; padding-left: 4px; }
+
+  /* Evidence */
+  .evidence { background: var(--ev-bg); color: var(--ev-text); border-left: 1px solid var(--ev-line); display: flex; flex-direction: column; min-width: 0; }
+  .ev-head { padding: 14px 18px; border-bottom: 1px solid var(--ev-line); display: flex; justify-content: space-between; align-items: baseline; }
+  .ev-title { font-weight: 600; font-family: var(--mono); font-size: 13px; }
+  .ev-meta { font-family: var(--mono); font-size: 10.5px; color: var(--ev-text-3); }
+  .ev-query { margin: 14px 18px 4px; font-family: var(--mono); font-size: 11px; color: var(--ev-text-2); background: #141517; border: 1px dashed var(--ev-line); border-radius: 8px; padding: 8px 10px; }
+  .ev-query i { color: var(--ev-text-3); font-style: normal; }
+  .ev-list { overflow-y: auto; padding: 10px 18px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .chunk { border: 1px solid var(--ev-line); background: var(--ev-card); border-radius: 11px; padding: 11px 12px; transition: border-color .15s, box-shadow .15s; }
+  .chunk.on { border-color: var(--ev-accent); box-shadow: 0 0 0 3px rgba(143,181,146,.18); }
+  .chunk.dim { opacity: .55; }
+  .chunk-top { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; flex-wrap: wrap; }
+  .num { font-weight: 700; font-size: 11px; color: var(--ev-accent); font-family: var(--mono); }
+  .tag { font-size: 10px; font-weight: 600; padding: 1px 7px; border-radius: 999px; }
+  .tag.page { color: var(--ev-text-2); border: 1px solid var(--ev-line); }
+  .tag.kw { color: var(--kw); background: var(--kw-soft); }
+  .tag.mean { color: var(--mean); background: var(--mean-soft); }
+  .tag.unused { color: var(--ev-text-3); border: 1px dashed var(--ev-line); }
+  .chunk p { margin: 0; font-size: 12.5px; color: var(--ev-text-2); line-height: 1.6; }
+  mark { background: var(--kw-soft); color: var(--kw); border-radius: 3px; padding: 0 2px; }
+  .score { margin-top: 8px; display: grid; grid-template-columns: 62px 1fr 34px; gap: 6px; align-items: center; font-family: var(--mono); font-size: 10px; color: var(--ev-text-3); }
+  .bar { height: 4px; border-radius: 4px; background: var(--ev-line); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--ev-accent); }
+
+  .note { position: fixed; bottom: 14px; left: 14px; max-width: 210px; background: var(--text); color: #fff; font-size: 12px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line); }
+
+  @media (max-width: 1100px) { .app { grid-template-columns: 200px 1fr 320px; } }
+  @media (max-width: 820px) {
+    .app { grid-template-columns: 1fr; height: auto; }
+    .sidebar { display: none; }
+    .evidence { border-left: 0; border-top: 1px solid var(--ev-line); }
+    .messages, .composer, .topbar { padding-left: 16px; padding-right: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo"><div class="logo-mark"></div>Sage</div>
+    <button class="btn">↑ Upload document</button>
+    <button class="btn ghost">+ New chat</button>
+    <div class="section">Chats</div>
+    <div class="thread active"><div class="name">attention_is_all_you_need.pdf</div><div class="meta">15 pages · 5 Oct</div></div>
+    <div class="thread"><div class="name">ml_notes_unit3.pdf</div><div class="meta">42 pages · 4 Oct</div></div>
+    <div class="thread"><div class="name">sales_q3.csv</div><div class="meta">1,204 rows · 2 Oct</div></div>
+  </aside>
+
+  <main class="chat">
+    <div class="topbar">
+      <div class="dot"></div>
+      <div class="doc-name">attention_is_all_you_need.pdf</div>
+      <div class="pill">15 pages</div>
+      <div class="pill">68 chunks</div>
+    </div>
+
+    <div class="messages">
+      <div class="summary"><b>SUMMARY</b>The paper introduces the Transformer, a sequence model built entirely on attention, dropping recurrence and convolutions. It trains faster and sets new BLEU records on English–German and English–French translation.</div>
+
+      <div class="msg user">What hardware was used, and how long did the big model train?</div>
+
+      <div class="msg bot">
+        <div class="route">route → <span>document_question</span> · hybrid search · 5 chunks</div>
+        The models were trained on one machine with <b>8 NVIDIA P100 GPUs</b> <span class="cite" data-c="1">1</span>. The big model trained for <b>300,000 steps</b>, which took about <b>3.5 days</b> <span class="cite" data-c="1">1</span><span class="cite" data-c="2">2</span>.
+        <div class="actions"><span>Copy</span><span>2 sources used</span></div>
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="input"><input placeholder="Ask about this document…"><button class="send">↑</button></div>
+      <div class="hint">Answers come only from your document. If it isn't there, Sage says so.</div>
+    </div>
+  </main>
+
+  <aside class="evidence">
+    <div class="ev-head"><div class="ev-title">Evidence</div><div class="ev-meta">5 retrieved · 2 cited</div></div>
+    <div class="ev-query"><i>query ›</i> what hardware was used, and how long did the big model train?</div>
+    <div class="ev-list">
+      <div class="chunk" data-c="1">
+        <div class="chunk-top"><span class="num">[1]</span><span class="tag page">Page 7</span><span class="tag kw">keyword</span><span class="tag mean">meaning</span></div>
+        <p>5.2 <mark>Hardware</mark> and Schedule — We trained our models on one machine with 8 NVIDIA P100 GPUs. … The big models were <mark>trained</mark> for 300,000 steps (3.5 days).</p>
+        <div class="score"><span>relevance</span><div class="bar"><i style="width:92%"></i></div><span>0.92</span></div>
+      </div>
+      <div class="chunk" data-c="2">
+        <div class="chunk-top"><span class="num">[2]</span><span class="tag page">Page 8</span><span class="tag kw">keyword</span></div>
+        <p>…establishing a new state-of-the-art BLEU score of 28.4. … <mark>Training</mark> took 3.5 days on 8 P100 GPUs.</p>
+        <div class="score"><span>relevance</span><div class="bar"><i style="width:71%"></i></div><span>0.71</span></div>
+      </div>
+      <div class="chunk dim">
+        <div class="chunk-top"><span class="num">[3]</span><span class="tag page">Page 8</span><span class="tag mean">meaning</span><span class="tag unused">not used</span></div>
+        <p>We estimate the number of floating point operations used to train a model by multiplying the training time, the number of GPUs used…</p>
+        <div class="score"><span>relevance</span><div class="bar"><i style="width:48%"></i></div><span>0.48</span></div>
+      </div>
+      <div class="chunk dim">
+        <div class="chunk-top"><span class="num">[4]</span><span class="tag page">Page 7</span><span class="tag kw">keyword</span><span class="tag unused">not used</span></div>
+        <p>5.3 Optimizer — We used the Adam optimizer with β1 = 0.9, β2 = 0.98 and ε = 10⁻⁹. We varied the learning rate over the course of training…</p>
+        <div class="score"><span>relevance</span><div class="bar"><i style="width:39%"></i></div><span>0.39</span></div>
+      </div>
+    </div>
+  </aside>
+</div>
+<div class="note">Mockup · click a citation number to highlight its chunk</div>
+<script>
+  document.querySelectorAll('.cite').forEach(c => c.addEventListener('click', () => {
+    const id = c.dataset.c;
+    document.querySelectorAll('.cite').forEach(x => x.classList.toggle('on', x.dataset.c === id));
+    document.querySelectorAll('.chunk').forEach(ch => ch.classList.toggle('on', ch.dataset.c === id));
+    const el = document.querySelector('.chunk[data-c="' + id + '"]');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }));
+</script>
+</body>
+</html>

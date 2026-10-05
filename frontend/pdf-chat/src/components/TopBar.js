@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import styles from "../constants/styles";
 
-function TopBar({ uploaded, fileName, summary, staleName }) {
+function TopBar({ uploaded, fileName, pages, summary, staleName }) {
   const [open, setOpen] = useState(true);
   const [displayedText, setDisplayedText] = useState("");
   const [done, setDone] = useState(false);
@@ -54,7 +54,9 @@ function TopBar({ uploaded, fileName, summary, staleName }) {
           }}
         />
         <span style={styles.topBarName}>{displayName}</span>
-        {uploaded && <span style={styles.topBarPages}>12 pages</span>}
+        {uploaded && pages > 0 && (
+          <span style={styles.topBarPages}>{pages} {pages === 1 ? "page" : "pages"}</span>
+        )}
         {showPanel && !stale && (
           <button
             onClick={() => setOpen((o) => !o)}

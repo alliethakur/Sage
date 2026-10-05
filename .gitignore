@@ -26,3 +26,6 @@ yarn-error.log*
 __pycache__/
 *.pyc
 node_modules/
+
+# Sage data: uploaded documents and ChromaDB
+backend/data/
