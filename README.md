@@ -13,7 +13,7 @@ Chat with any PDF — semantic search, page citations, and agentic intent routin
 - Per-document thread history with the ability to switch between conversations
 
 ## Tech Stack
-React · Flask · LangChain · LangGraph · FAISS · HuggingFace Sentence Transformers · Groq (Llama 3.3 70B)
+React · Flask · LangChain · LangGraph · FAISS · HuggingFace Sentence Transformers · Groq (GPT-OSS 120B)
 
 ## Getting Started
 

@@ -1,5 +1,22 @@
 import { useRef, useEffect, useState } from "react";
 import styles from "../constants/styles";
+import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
+
+// The model sometimes writes maths as \( ... \) or \[ ... \].
+// remark-math only understands $...$ and $$...$$, so convert them.
+function normalizeMath(text) {
+  return text
+    .replace(/\\\[([\s\S]+?)\\\]/g, (_, m) => `$$${m}$$`)
+    .replace(/\\\(([\s\S]+?)\\\)/g, (_, m) => `$${m}$`);
+}
+
+// Tighter paragraph spacing inside chat bubbles
+const mdComponents = {
+  p: ({ node, ...props }) => <p style={{ margin: "0 0 8px" }} {...props} />,
+};
 
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false);
@@ -115,7 +132,19 @@ function ChatArea({ messages, loading }) {
             }}
           >
             {msg.role === "assistant" && <CopyButton text={msg.text} />}
-            <p style={{ margin: 0 }}>{msg.text}</p>
+            {msg.role === "assistant" ? (
+              <div>
+                <ReactMarkdown
+                  components={mdComponents}
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                >
+                  {normalizeMath(msg.text)}
+                </ReactMarkdown>
+              </div>
+            ) : (
+              <p style={{ margin: 0 }}>{msg.text}</p>
+            )}
             {msg.sources.length > 0 && (
               <div style={styles.sourceTag}>
                 <span>□</span>
