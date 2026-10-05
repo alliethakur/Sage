@@ -23,8 +23,8 @@ function Welcome({ onPick, onDropFile, uploading }) {
     >
       <div className={`dropzone ${over ? "over" : ""}`} onClick={uploading ? undefined : onPick}>
         <div className="icon">{uploading ? "…" : "↑"}</div>
-        <h2>{uploading ? "Reading your document…" : "Chat with a PDF"}</h2>
-        <p>{uploading ? "Splitting it into chunks and building the search index." : "Drop a PDF here, or click to browse."}</p>
+        <h2>{uploading ? "Reading your document…" : "Chat with a document"}</h2>
+        <p>{uploading ? "Splitting it into chunks and building the search index." : "Drop a PDF, TXT or CSV here, or click to browse."}</p>
         <div className="features">
           <span className="pill">Cites the exact chunk</span>
           <span className="pill">Says so when it doesn't know</span>

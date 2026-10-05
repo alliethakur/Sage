@@ -11,3 +11,4 @@ python-dotenv
 pypdf
 langgraph
 rank-bm25
+pandas

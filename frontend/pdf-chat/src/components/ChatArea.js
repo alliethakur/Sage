@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm"; // tables, strikethrough, task lists
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 
@@ -21,6 +22,7 @@ const ROUTE_LABELS = {
   document_question: "hybrid search",
   overview: "start of document",
   casual: "no search needed",
+  table_query: "exact query over the full table",
 };
 
 function Answer({ msg, index, activeCite, isShown, onCite }) {
@@ -44,7 +46,7 @@ function Answer({ msg, index, activeCite, isShown, onCite }) {
 
   return (
     <div className="answer">
-      <ReactMarkdown components={components} remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+      <ReactMarkdown components={components} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
         {linkCitations(normalizeMath(msg.text))}
       </ReactMarkdown>
     </div>
@@ -133,7 +135,7 @@ function ChatArea({ thread, loading, shownIndex, activeCite, onCite, onSelectMes
         msg.role === "user" ? (
           <div key={i} className="msg user fade-up">{msg.text}</div>
         ) : (
-          <div key={i} className={`msg bot fade-up ${i === shownIndex && msg.evidence?.length ? "selected" : ""}`}>
+          <div key={i} className={`msg bot fade-up ${i === shownIndex && (msg.evidence?.length || msg.table) ? "selected" : ""}`}>
             {msg.route && (
               <div className="route">
                 route → <b>{msg.route}</b> · {ROUTE_LABELS[msg.route] || ""}
@@ -149,6 +151,7 @@ function ChatArea({ thread, loading, shownIndex, activeCite, onCite, onSelectMes
                     {msg.evidence.filter((e) => e.cited).length} of {msg.evidence.length} sources cited
                   </button>
                 )}
+                {msg.table && <button onClick={() => onSelectMessage(i)}>Show query</button>}
                 {msg.sources?.length > 0 && <span>{msg.sources.join(", ")}</span>}
               </div>
             )}

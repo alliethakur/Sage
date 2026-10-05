@@ -76,6 +76,8 @@ function App() {
       id,
       docId: id,
       name: file.name,
+      kind: result.kind,
+      stats: result.stats,
       pages: result.pages,
       chunks: result.chunks,
       date: new Date().toLocaleDateString(undefined, { day: "numeric", month: "short" }),
@@ -111,6 +113,7 @@ function App() {
       route: data.route || null,
       sources: data.sources || [],
       evidence: data.evidence || [],
+      table: data.table || null,
     };
     updateThread(id, (t) => ({ messages: [...t.messages, answer] }));
     setLoading(false);
@@ -131,7 +134,7 @@ function App() {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf"
+        accept=".pdf,.txt,.md,.csv"
         hidden
         onChange={(e) => {
           handleFile(e.target.files[0]);

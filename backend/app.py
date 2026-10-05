@@ -2,8 +2,6 @@ from dotenv import load_dotenv
 load_dotenv()
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.documents import Document
@@ -11,27 +9,37 @@ from groq import Groq
 from langgraph.graph import StateGraph, END
 from typing import TypedDict
 from rank_bm25 import BM25Okapi
+import groq
 import json
+import time
 import os
 import re
+import shutil
 import tempfile
 import uuid
+from loaders import load_file, file_kind
+import tables
 
 app = Flask(__name__)
 CORS(app)
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+# Smaller, faster model: used for easy jobs (routing) and as a fallback when MODEL is busy
+FAST_MODEL = os.getenv("GROQ_FAST_MODEL", "openai/gpt-oss-20b")
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 # Everything Sage stores lives in backend/data (ignored by Git):
 #   data/chroma/          ChromaDB: one collection of chunks per uploaded document
-#   data/docs/<id>.json   the document's name and page texts (for summary/overview)
+#   data/docs/<id>.json   the document's name, type and text sections (for summary/overview)
+#   data/tables/<id>.csv  a copy of each uploaded CSV, for exact table queries
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 CHROMA_DIR = os.path.join(DATA_DIR, "chroma")
 DOCS_DIR = os.path.join(DATA_DIR, "docs")
+TABLES_DIR = os.path.join(DATA_DIR, "tables")
 os.makedirs(DOCS_DIR, exist_ok=True)
+os.makedirs(TABLES_DIR, exist_ok=True)
 
 # Set DEBUG_RETRIEVAL=1 in .env to print routing and search details in the terminal
 DEBUG_RETRIEVAL = os.getenv("DEBUG_RETRIEVAL") == "1"
@@ -63,7 +71,7 @@ def tokenize(text):
 
 # ---------- Document storage ----------
 
-_cache = {}  # doc_id -> loaded document (vector store, BM25 index, chunks, pages)
+_cache = {}  # doc_id -> loaded document (vector store, BM25 index, chunks, sections)
 
 def is_valid_doc_id(doc_id):
     return isinstance(doc_id, str) and re.fullmatch(r"[0-9a-f]{32}", doc_id) is not None
@@ -96,16 +104,32 @@ def load_document(doc_id):
     chunks = [Document(page_content=text, metadata=md)
               for text, md in zip(saved["documents"], saved["metadatas"])]
     chunks.sort(key=lambda c: c.metadata["chunk_id"])
+    for c in chunks:  # documents uploaded before TXT/CSV support only stored 'page'
+        c.metadata.setdefault("location", f"Page {c.metadata.get('page', 0) + 1}")
+
+    # Older uploads saved "pages"; newer ones save labelled "sections"
+    sections = meta.get("sections") or [[f"Page {i + 1}", p] for i, p in enumerate(meta["pages"])]
 
     doc = {
         "name": meta["name"],
-        "pages": meta["pages"],
+        "kind": meta.get("kind", "pdf"),
+        "sections": sections,
         "store": store,
         "chunks": chunks,
         "bm25": BM25Okapi([tokenize(c.page_content) for c in chunks]),
     }
     _cache[doc_id] = doc
     return doc
+
+
+def get_table(doc_id, doc):
+    """The full CSV as a pandas table (loaded once), or None for other file types."""
+    if doc["kind"] != "csv":
+        return None
+    if "table" not in doc:
+        path = os.path.join(TABLES_DIR, f"{doc_id}.csv")
+        doc["table"] = tables.load_table(path) if os.path.exists(path) else None
+    return doc["table"]
 
 
 # ---------- Routes ----------
@@ -116,55 +140,57 @@ def upload():
     if file is None:
         return jsonify({"error": "No file received."}), 400
 
-    if not file.filename.lower().endswith(".pdf"):
-        return jsonify({"error": "Only PDF files are supported."}), 400
+    if file_kind(file.filename) is None:
+        return jsonify({"error": "Only PDF, TXT, MD and CSV files are supported."}), 400
 
     file.seek(0, 2)
     size = file.tell()
     file.seek(0)
     if size > 10 * 1024 * 1024:
-        return jsonify({"error": "PDF is too large. Please upload a file under 10MB."}), 413
+        return jsonify({"error": "File is too large. Please upload a file under 10MB."}), 413
 
-    # Save the PDF temporarily, read it, then delete the temp file
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    # Save the file temporarily, read and chunk it by type, then delete the temp file
+    suffix = "." + file.filename.rsplit(".", 1)[-1].lower()
+    doc_id = uuid.uuid4().hex
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     try:
         tmp.close()
         file.save(tmp.name)
-        docs = PyPDFLoader(tmp.name).load()
-    except Exception:
-        return jsonify({"error": "Could not read this PDF. It may be corrupted."}), 422
+        kind, sections, chunks, stats = load_file(tmp.name, file.filename)
+        if kind == "csv":  # keep the full table for exact queries
+            shutil.copy(tmp.name, os.path.join(TABLES_DIR, f"{doc_id}.csv"))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 422
+    except Exception as e:
+        print(f"[error] upload: {e}")
+        return jsonify({"error": "Could not read this file. It may be corrupted."}), 422
     finally:
         os.remove(tmp.name)
 
-    pages = [d.page_content for d in docs]
-    if not "".join(pages).strip():
-        return jsonify({"error": "This PDF appears to be scanned. Please upload a text-based PDF."}), 422
-
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    chunks = splitter.split_documents(docs)
-    doc_id = uuid.uuid4().hex
     for i, chunk in enumerate(chunks):
-        # Keep only simple metadata (ChromaDB stores str/int/float/bool)
-        chunk.metadata = {"chunk_id": i, "page": int(chunk.metadata.get("page", 0))}
+        chunk.metadata["chunk_id"] = i  # lets us match dense and keyword results
 
-    # Save chunks to ChromaDB and the page texts to a JSON file
+    # Save chunks to ChromaDB and the text sections to a JSON file
     store = open_vector_store(doc_id)
     store.add_documents(chunks, ids=[f"{doc_id}-{i}" for i in range(len(chunks))])
     with open(os.path.join(DOCS_DIR, f"{doc_id}.json"), "w", encoding="utf-8") as f:
-        json.dump({"name": file.filename, "pages": pages}, f)
+        json.dump({"name": file.filename, "kind": kind, "stats": stats, "sections": sections}, f)
 
     _cache[doc_id] = {
         "name": file.filename,
-        "pages": pages,
+        "kind": kind,
+        "sections": sections,
         "store": store,
         "chunks": chunks,
         "bm25": BM25Okapi([tokenize(c.page_content) for c in chunks]),
     }
 
     return jsonify({
-        "message": "PDF uploaded and processed successfully",
+        "message": "File uploaded and processed successfully",
         "doc_id": doc_id,
-        "pages": len(pages),
+        "kind": kind,
+        "stats": stats,
+        "pages": len(sections) if kind == "pdf" else None,
         "chunks": len(chunks),
     })
 
@@ -174,20 +200,17 @@ def summarize():
     if doc is None:
         return jsonify({"error": "Document not found. Please upload it again."}), 404
 
-    doc_text = "\n".join(doc["pages"])
+    doc_text = "\n".join(text for _, text in doc["sections"])
     try:
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=[{
-                "role": "user",
-                "content": f"Summarize the following document in 3-4 sentences. Be concise and focus on the main topic and key points.\n\nDocument:\n{doc_text[:4000]}"
-            }]
+        summary = ask_llm(
+            "Summarize the following document in 3-4 sentences. Be concise and focus "
+            f"on the main topic and key points.\n\nDocument:\n{doc_text[:4000]}"
         )
     except Exception as e:
         print(f"[error] summarize: {e}")
         return jsonify({"error": "The AI service is unavailable right now. Please try again."}), 502
 
-    return jsonify({"summary": response.choices[0].message.content})
+    return jsonify({"summary": summary})
 
 
 # ---------- LangGraph: classify the question, then route it ----------
@@ -199,6 +222,7 @@ class AskState(TypedDict, total=False):
     answer: str
     sources: list
     evidence: list   # chunks shown in the Evidence panel (retrieval route only)
+    table: dict      # query plan + result (table route only)
     error: str
 
 REFUSAL_MESSAGE = "I couldn't find this in the document."
@@ -209,26 +233,67 @@ FORMAT_RULES = (
     "(inline) or $$...$$ (on its own line)."
 )
 
-def ask_llm(prompt):
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.choices[0].message.content
+# Errors worth retrying: Groq busy/over capacity (5xx), rate limits (429), network problems
+RETRYABLE = (groq.InternalServerError, groq.RateLimitError, groq.APIConnectionError, groq.APITimeoutError)
+
+def ask_llm(prompt, fast=False):
+    """Call Groq with retries (waiting 1s, then 2s) and fall back to the smaller model
+    if the main one stays unavailable. fast=True uses the small model directly."""
+    models = [FAST_MODEL] if fast else [MODEL, FAST_MODEL]
+    last_error = None
+    for model in models:
+        for attempt in range(3):
+            try:
+                extra = {"reasoning_effort": "low"} if "gpt-oss" in model else {}
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    extra_body=extra,
+                )
+                if model != models[0]:
+                    print(f"[info] answered with fallback model {model}")
+                return response.choices[0].message.content
+            except RETRYABLE as e:
+                last_error = e
+                print(f"[retry] {model} attempt {attempt + 1} failed: {type(e).__name__}")
+                if attempt < 2:
+                    time.sleep(2 ** attempt)
+    raise last_error
+
+# Words that almost always mean "calculate over the table" (exact lookups are left to the classifier)
+TABLE_WORDS = re.compile(
+    r"\b(how many|count|number of|total|sum|average|avg|mean|median|highest|lowest|"
+    r"maximum|minimum|max|min|most|least|per|by each|for each|each|group|percent|percentage|"
+    r"ratio|rank|top \d+|bottom \d+)\b",
+    re.IGNORECASE,
+)
 
 def classify_intent(state):
     question = state["question"]
+    doc = load_document(state["doc_id"])
+    is_table = doc is not None and get_table(state["doc_id"], doc) is not None
+    table_option = (
+        "'table_query' (questions about the table that need exact lookups by a value such as "
+        "an ID or name, counting, totals, averages, min/max, sorting or grouping over rows), "
+        if is_table else ""
+    )
     label = ask_llm(
         "Classify the message below as exactly one word: "
         "'casual' (greetings, small talk, thanks, or questions about what you can do), "
         "'overview' (questions about the document as a whole: its main idea, summary, "
         "title, authors, or what it is about), "
+        + table_option +
         "or 'document_question' (any other question to be answered from an uploaded document). "
         "Any specific factual or technical question counts as document_question. "
         "If unsure, choose document_question. "
-        f"Reply with only that one word.\n\nMessage: {question}"
+        f"Reply with only that one word.\n\nMessage: {question}",
+        fast=True,  # routing is an easy job, so use the small model
     ).strip().lower().strip(".'\"")
-    intent = label if label in ("casual", "overview") else "document_question"
+    allowed = ("casual", "overview", "table_query") if is_table else ("casual", "overview")
+    intent = label if label in allowed else "document_question"
+    # Safety net: for tables, calculation words override a "document_question" label
+    if is_table and intent == "document_question" and TABLE_WORDS.search(question):
+        intent = "table_query"
     debug(f"[route] {question!r} -> {intent} (model said: {label!r})")
     return {"intent": intent}
 
@@ -236,7 +301,7 @@ def direct_answer(state):
     answer = ask_llm(
         "You are Sage, a friendly document-chat assistant. Reply briefly and "
         "naturally to this message. If asked what you can do, explain that you can "
-        "answer questions about the user's uploaded PDF with page citations, give an "
+        "answer questions about the user's uploaded document (PDF, TXT or CSV) with citations, give an "
         "overview of it (main idea, authors), and say so when something isn't in the "
         "document. Do not answer factual or technical questions; instead, ask the user "
         "to ask about their uploaded document."
@@ -253,11 +318,11 @@ def overview_answer(state):
 
     OVERVIEW_CHARS = 6000
     context, sources = "", []
-    for page_number, page_text in enumerate(doc["pages"], start=1):
+    for label, text in doc["sections"]:
         if len(context) >= OVERVIEW_CHARS:
             break
-        context += page_text + "\n"
-        sources.append(f"PDF Page {page_number}")
+        context += text + "\n"
+        sources.append(label)
     context = context[:OVERVIEW_CHARS]
 
     answer = ask_llm(
@@ -347,16 +412,20 @@ def retrieve_and_answer(state):
     debug(f"[fused] ids={top_ids}, top chunk={relevant_docs[0].page_content[:100]!r}")
 
     # Number the chunks [1]..[n] so the model can cite exactly which one it used.
-    # Note: 'page' is the 0-indexed physical page position in the PDF file,
-    # not the printed page number — they differ when a PDF has a cover, ToC,
-    # or Roman-numeral front matter before the main content.
     context = "\n\n".join(
-        f"[{n}] (page {d.metadata['page'] + 1})\n{d.page_content}"
+        f"[{n}] ({d.metadata['location']})\n{d.page_content}"
         for n, d in enumerate(relevant_docs, start=1)
+    )
+    # Tables: retrieval only shows a few rows, so be honest about calculations
+    table_note = (
+        "The context shows only some rows of a larger table. If the question needs "
+        "every row (totals, averages, counts), say that you can only see some rows "
+        "and answer from the rows shown. "
+        if doc["kind"] == "csv" else ""
     )
 
     answer = ask_llm(
-        "Answer the question using ONLY the numbered context chunks below. "
+        "Answer the question using ONLY the numbered context chunks below. " + table_note +
         "After each fact, cite the chunk it came from with its number in square brackets, "
         "like [1] or [2][3]. Only cite chunks that actually support the fact. "
         "If the context does not contain the answer, reply exactly: "
@@ -384,7 +453,7 @@ def retrieve_and_answer(state):
             found_by.append("meaning")
         evidence.append({
             "n": n,
-            "page": d.metadata["page"] + 1,
+            "location": d.metadata["location"],
             "text": d.page_content,
             "found_by": found_by,
             "meaning_score": round(float(meaning.get(chunk_id, 0.0)), 3),
@@ -393,26 +462,81 @@ def retrieve_and_answer(state):
         })
     debug(f"[cited] {cited}")
 
-    # Page citations: pages of the cited chunks (or all retrieved ones if the
-    # model answered without citing anything)
+    # Citations: locations of the cited chunks (or all retrieved ones if the
+    # model answered without citing anything), in document order
     used = [e for e in evidence if e["cited"]] or ([] if refused else evidence)
-    sources = [f"PDF Page {p}" for p in sorted({e["page"] for e in used})]
+    used_docs = sorted((relevant_docs[e["n"] - 1] for e in used), key=lambda d: d.metadata["chunk_id"])
+    sources = list(dict.fromkeys(d.metadata["location"] for d in used_docs))
     return {"answer": answer, "sources": sources, "evidence": evidence}
+
+def table_answer(state):
+    """Exact answers for CSVs: the LLM writes a JSON query plan, pandas runs it."""
+    doc = load_document(state["doc_id"])
+    if doc is None:
+        return {"error": "Document not found. Please upload it again."}
+    df = get_table(state["doc_id"], doc)
+    question = state["question"]
+
+    try:
+        plan = tables.parse_plan(ask_llm(
+            f"{tables.PLAN_INSTRUCTIONS}\n\nTable:\n{tables.describe(df)}\n\nQuestion: {question}"
+        ))
+        result = tables.run_plan(df, plan)
+    except Exception as e:
+        # A bad plan shouldn't break the chat: fall back to normal search
+        debug(f"[table] plan failed ({e}); falling back to search")
+        return {**retrieve_and_answer(state), "intent": "document_question"}
+    debug(f"[table] plan={plan} matched={result['matched_rows']}")
+
+    # Describe the result in plain words (raw JSON tempted the model to invent "Row 1")
+    if result["kind"] == "value":
+        result_text = f"{result['label']} = {result['value']} (computed over all {result['total_rows']} rows)"
+        rows_hint = "Do not mention row numbers. "
+    else:
+        header = "| " + " | ".join(map(str, result["columns"])) + " |"
+        divider = "|" + "---|" * len(result["columns"])
+        body = "\n".join("| " + " | ".join("" if v is None else str(v) for v in row) + " |"
+                         for row in result["rows"])
+        result_text = (f"{result['matched_rows']} of {result['total_rows']} rows matched. "
+                       f"Showing up to 20:\n{header}\n{divider}\n{body}")
+        rows_hint = ("When you mention a row, use its number from the 'Row' column (e.g. Row 3). "
+                     if result["kind"] == "rows" else "Do not mention row numbers. ")
+
+    answer = ask_llm(
+        "Answer the question using ONLY the result below, which was computed exactly "
+        "over the full table. Give the direct answer first in 1-3 sentences, with no "
+        "heading. Use a small table only if there are several rows or groups. "
+        + rows_hint +
+        "Do not add citation markers. If the result doesn't answer the question, "
+        f"reply exactly: \"{REFUSAL_MESSAGE}\" {FORMAT_RULES}\n\nQuestion: {question}\n"
+        f"Result: {result_text}"
+    )
+    answer = re.sub(r"【[^】]*】", "", answer).strip()  # drop stray GPT-OSS-style markers
+    summary = f"Table query · {result['matched_rows']:,} of {result['total_rows']:,} rows matched"
+    return {
+        "answer": answer,
+        "sources": [summary],
+        "evidence": [],
+        "table": {"plan": plan, "result": result},
+    }
 
 graph = StateGraph(AskState)
 graph.add_node("classify_intent", classify_intent)
 graph.add_node("direct_answer", direct_answer)
 graph.add_node("retrieve_and_answer", retrieve_and_answer)
 graph.add_node("overview_answer", overview_answer)
+graph.add_node("table_answer", table_answer)
 graph.set_entry_point("classify_intent")
 graph.add_conditional_edges("classify_intent", lambda state: state["intent"], {
     "casual": "direct_answer",
     "overview": "overview_answer",
+    "table_query": "table_answer",
     "document_question": "retrieve_and_answer"
 })
 graph.add_edge("direct_answer", END)
 graph.add_edge("retrieve_and_answer", END)
 graph.add_edge("overview_answer", END)
+graph.add_edge("table_answer", END)
 ask_graph = graph.compile()
 
 @app.route("/ask", methods=["POST"])
@@ -439,6 +563,7 @@ def ask():
         "sources": result["sources"],
         "route": result.get("intent"),
         "evidence": result.get("evidence", []),
+        "table": result.get("table"),
     })
 
 if __name__ == "__main__":

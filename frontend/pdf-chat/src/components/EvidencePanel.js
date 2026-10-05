@@ -50,7 +50,7 @@ function Chunk({ chunk, words, active, onClick }) {
     <div ref={ref} className={`chunk ${active ? "on" : ""} ${chunk.cited ? "" : "dim"}`} onClick={onClick}>
       <div className="chunk-top">
         <span className="num">[{chunk.n}]</span>
-        <span className="tag page">Page {chunk.page}</span>
+        <span className="tag page">{chunk.location || `Page ${chunk.page}`}</span>
         {chunk.found_by.includes("keyword") && <span className="tag kw">keyword</span>}
         {chunk.found_by.includes("meaning") && <span className="tag mean">meaning</span>}
         {!chunk.cited && <span className="tag unused">not used</span>}
@@ -67,6 +67,42 @@ function Chunk({ chunk, words, active, onClick }) {
   );
 }
 
+// Table route: show the query plan the AI wrote and the exact result pandas computed
+function TableResult({ table }) {
+  const { plan, result } = table;
+  return (
+    <div className="ev-list">
+      <div className="chunk">
+        <div className="chunk-top"><span className="num">Query plan</span><span className="tag kw">JSON</span></div>
+        <pre className="plan">{JSON.stringify(plan, null, 2)}</pre>
+      </div>
+      <div className="chunk">
+        <div className="chunk-top">
+          <span className="num">Result</span>
+          <span className="tag page">{result.matched_rows.toLocaleString()} of {result.total_rows.toLocaleString()} rows matched</span>
+        </div>
+        {result.kind === "value" ? (
+          <div className="big-value">
+            <span>{result.label}</span>
+            <b>{typeof result.value === "number" ? result.value.toLocaleString() : String(result.value)}</b>
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table className="result-table">
+              <thead><tr>{result.columns.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+              <tbody>
+                {result.rows.map((row, i) => (
+                  <tr key={i}>{row.map((v, j) => <td key={j}>{v === null ? "—" : String(v)}</td>)}</tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function EvidencePanel({ hasDoc, message, activeCite, onCite }) {
   const evidence = message?.evidence || [];
   const cited = evidence.filter((e) => e.cited).length;
@@ -74,8 +110,10 @@ function EvidencePanel({ hasDoc, message, activeCite, onCite }) {
 
   let empty = null;
   if (!hasDoc) empty = "Upload a document to start.\nThe chunks Sage reads will appear here.";
+  else if (message?.isError) empty = "The request failed, so there's no evidence.\nTry asking again.";
   else if (!message?.query) empty = "Ask a question.\nYou'll see exactly which chunks the answer came from.";
   else if (message.route === "casual") empty = "Casual reply.\nNo document search was needed.";
+  else if (message.route === "table_query" && message.table) empty = null;
   else if (message.route === "overview") empty = `Overview question.\nAnswered from the start of the document${message.sources?.length ? `\n(${message.sources.join(", ")})` : ""}.`;
   else if (!evidence.length) empty = "Nothing in the document matched this question,\nso Sage didn't answer.";
 
@@ -84,12 +122,15 @@ function EvidencePanel({ hasDoc, message, activeCite, onCite }) {
       <div className="ev-head">
         <div className="ev-title">Evidence</div>
         {evidence.length > 0 && <div className="ev-meta">{evidence.length} retrieved · {cited} cited</div>}
+        {message?.table && <div className="ev-meta">pandas · full table</div>}
       </div>
       {message?.query && (
         <div className="ev-query"><i>query ›</i> {message.query}</div>
       )}
       {empty ? (
         <div className="ev-empty" style={{ whiteSpace: "pre-line" }}>{empty}</div>
+      ) : message?.table ? (
+        <TableResult table={message.table} />
       ) : (
         <div className="ev-list">
           {evidence.map((chunk) => (

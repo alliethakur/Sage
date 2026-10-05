@@ -25,7 +25,7 @@ function Sidebar({ threads, activeId, onSelect, onNewChat, onDelete, uploading, 
           <div className="thread-text">
             <div className="name">{t.name}</div>
             <div className="meta">
-              {t.pages ? `${t.pages} ${t.pages === 1 ? "page" : "pages"} · ` : ""}
+              {t.stats ? `${t.stats} · ` : t.pages ? `${t.pages} ${t.pages === 1 ? "page" : "pages"} · ` : ""}
               {t.date}
             </div>
           </div>
