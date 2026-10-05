@@ -30,3 +30,6 @@ node_modules/
 # Sage data: uploaded documents and ChromaDB
 backend/data/
 Claude outputs/
+
+# Eval test files (download them yourself, see eval/run_eval.py)
+eval/docs/

@@ -1,0 +1,50 @@
+{
+  "_about": "Sage evaluation set. 'expect' is a list of checks that must ALL match the answer; each check is a regex (case-insensitive). 'pages' are the correct locations, used for retrieval hit@5 and citation precision.",
+  "documents": {
+    "attention": "Attention Is All You Need.pdf",
+    "alice": "alice.txt",
+    "titanic": "titanic.csv"
+  },
+  "questions": [
+    {"doc": "attention", "type": "answer", "q": "How many layers are in the encoder?", "expect": ["\\b(6|six)\\b"], "pages": ["Page 3"], "route": "document_question"},
+    {"doc": "attention", "type": "answer", "q": "How many attention heads does the base model use?", "expect": ["\\b(8|eight)\\b"], "pages": ["Page 5", "Page 9"], "route": "document_question"},
+    {"doc": "attention", "type": "answer", "q": "What is d_model in the base model?", "expect": ["\\b512\\b"], "pages": ["Page 3", "Page 5", "Page 9"], "route": "document_question"},
+    {"doc": "attention", "type": "answer", "q": "What BLEU score did the big model get on English-German translation?", "expect": ["28\\.4"], "pages": ["Page 1", "Page 8"], "route": "document_question"},
+    {"doc": "attention", "type": "answer", "q": "What BLEU score did the big model get on English-French translation?", "expect": ["41\\.(0|8)"], "pages": ["Page 1", "Page 8"], "route": "document_question"},
+    {"doc": "attention", "type": "answer", "q": "What hardware was used for training?", "expect": ["p100"], "pages": ["Page 7", "Page 8"], "route": "document_question"},
+    {"doc": "attention", "type": "answer", "q": "How long did the big model train?", "expect": ["3\\.5\\s*days|300,?000"], "pages": ["Page 7", "Page 8"], "route": "document_question"},
+    {"doc": "attention", "type": "answer", "q": "What optimizer did they use?", "expect": ["adam"], "pages": ["Page 7"], "route": "document_question"},
+    {"doc": "attention", "type": "answer", "q": "What are warmup steps set to?", "expect": ["4,?000"], "pages": ["Page 7"], "route": "document_question"},
+    {"doc": "attention", "type": "answer", "q": "What dropout rate was used for the base model?", "expect": ["0\\.1"], "pages": ["Page 7", "Page 8", "Page 9"], "route": "document_question"},
+    {"doc": "attention", "type": "answer", "q": "Why do they scale the dot products by the square root of d_k?", "expect": ["gradient|large|softmax"], "pages": ["Page 4"], "route": "document_question"},
+    {"doc": "attention", "type": "answer", "q": "Why did they choose sinusoidal positional encodings?", "expect": ["extrapolat|longer|relative position"], "pages": ["Page 6"], "route": "document_question"},
+    {"doc": "attention", "type": "refuse", "q": "How many parameters does GPT-3 have?"},
+    {"doc": "attention", "type": "refuse", "q": "What is BERT's score on the GLUE benchmark?"},
+    {"doc": "attention", "type": "refuse", "q": "What is the capital of France?"},
+    {"doc": "attention", "type": "refuse", "q": "What is the population of Bengaluru?"},
+    {"doc": "attention", "type": "answer", "q": "Who are the authors of this paper?", "expect": ["vaswani", "shazeer"], "route": "overview"},
+    {"doc": "attention", "type": "answer", "q": "What is the main idea of this paper?", "expect": ["transformer", "attention"], "route": "overview"},
+    {"doc": "attention", "type": "casual", "q": "hi", "route": "casual"},
+    {"doc": "attention", "type": "casual", "q": "thanks!", "route": "casual"},
+
+    {"doc": "alice", "type": "answer", "q": "What did the label on the bottle say?", "expect": ["drink me"], "route": "document_question"},
+    {"doc": "alice", "type": "answer", "q": "What was written on the little cake?", "expect": ["eat me"], "route": "document_question"},
+    {"doc": "alice", "type": "answer", "q": "Who keeps shouting 'Off with her head'?", "expect": ["queen"], "route": "document_question"},
+    {"doc": "alice", "type": "answer", "q": "What does the White Rabbit take out of its waistcoat-pocket?", "expect": ["watch"], "route": "document_question"},
+    {"doc": "alice", "type": "answer", "q": "What is left behind when the Cheshire Cat vanishes?", "expect": ["grin"], "route": "document_question"},
+    {"doc": "alice", "type": "answer", "q": "Who is at the mad tea-party with the Hatter?", "expect": ["march hare|dormouse"], "route": "document_question"},
+    {"doc": "alice", "type": "refuse", "q": "What is the capital of France?"},
+    {"doc": "alice", "type": "refuse", "q": "Who wrote Hamlet?"},
+
+    {"doc": "titanic", "type": "answer", "q": "How many passengers survived?", "expect": ["\\b342\\b"], "route": "table_query"},
+    {"doc": "titanic", "type": "answer", "q": "How many survived, by sex?", "expect": ["\\b233\\b", "\\b109\\b"], "route": "table_query"},
+    {"doc": "titanic", "type": "answer", "q": "How many female passengers were in first class?", "expect": ["\\b94\\b"], "route": "table_query"},
+    {"doc": "titanic", "type": "answer", "q": "How many passengers were in third class?", "expect": ["\\b491\\b"], "route": "table_query"},
+    {"doc": "titanic", "type": "answer", "q": "What fare did passenger 2 pay?", "expect": ["71\\.28"], "route": "table_query"},
+    {"doc": "titanic", "type": "answer", "q": "Who paid the highest fare?", "expect": ["cardeza|512\\.3"], "route": "table_query"},
+    {"doc": "titanic", "type": "answer", "q": "What was the average age in each class?", "expect": ["38\\.2", "29\\.(8|9)", "25\\.1"], "route": "table_query"},
+    {"doc": "titanic", "type": "answer", "q": "How old was Mrs. Florence Briggs Thayer Cumings?", "expect": ["\\b38\\b"]},
+    {"doc": "titanic", "type": "refuse", "q": "What was the ship's top speed?"},
+    {"doc": "titanic", "type": "refuse", "q": "Who was the captain of the Titanic?"}
+  ]
+}

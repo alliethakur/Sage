@@ -218,6 +218,7 @@ def summarize():
 class AskState(TypedDict, total=False):
     question: str
     doc_id: str
+    mode: str        # retrieval mode: "hybrid" (default), or "dense"/"keyword" for evaluation
     intent: str
     answer: str
     sources: list
@@ -394,12 +395,20 @@ def retrieve_and_answer(state):
     ranked = sorted(range(len(bm25_scores)), key=lambda i: bm25_scores[i], reverse=True)
     bm25_ids = [i for i in ranked[:CANDIDATES] if bm25_scores[i] > 0]
 
+    # Evaluation only: switch one search off to measure what each one adds (ablation)
+    mode = state.get("mode") or "hybrid"
+    if mode == "dense":
+        bm25_ids = []
+    elif mode == "keyword":
+        dense_ids, best_cosine = [], 0.0
+
     debug(f"[dense] best cosine={best_cosine:.3f}, top ids={dense_ids[:5]}")
     debug(f"[bm25] top ids={bm25_ids[:5]}, top score={max(bm25_scores, default=0):.2f}")
 
     # Early refusal: no shared keywords AND weak meaning match -> clearly off-topic.
     # Everything else goes to the LLM, which refuses if the chunks lack the answer.
-    if not bm25_ids and best_cosine < MIN_COSINE:
+    if (not bm25_ids and best_cosine < MIN_COSINE and mode != "dense") or \
+            (mode == "dense" and best_cosine < MIN_COSINE) or (mode == "keyword" and not bm25_ids):
         return {"answer": REFUSAL_MESSAGE, "sources": [], "evidence": []}
 
     # 3. Reciprocal Rank Fusion: a chunk ranked high in either list scores high
@@ -564,13 +573,14 @@ def ask():
     body = request.json or {}
     question = (body.get("question") or "").strip()
     doc_id = body.get("doc_id")
+    mode = body.get("mode") if body.get("mode") in ("hybrid", "dense", "keyword") else "hybrid"
     if not question:
         return jsonify({"error": "Please type a question."}), 400
     if load_document(doc_id) is None:
         return jsonify({"error": "Document not found. Please upload it again."}), 404
 
     try:
-        result = ask_graph.invoke({"question": question, "doc_id": doc_id})
+        result = ask_graph.invoke({"question": question, "doc_id": doc_id, "mode": mode})
     except Exception as e:
         print(f"[error] ask: {e}")
         return jsonify({"error": "The AI service is unavailable right now. Please try again."}), 502
