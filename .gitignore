@@ -29,3 +29,4 @@ node_modules/
 
 # Sage data: uploaded documents and ChromaDB
 backend/data/
+Claude outputs/
