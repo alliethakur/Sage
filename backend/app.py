@@ -3,7 +3,6 @@ load_dotenv()
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.documents import Document
 from groq import Groq
 from langgraph.graph import StateGraph, END
@@ -19,6 +18,7 @@ import shutil
 import tempfile
 import uuid
 from loaders import load_file, file_kind
+from embeddings import MiniLMEmbeddings
 import tables
 
 app = Flask(__name__)
@@ -30,7 +30,8 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 # Smaller, faster model: used for easy jobs (routing) and as a fallback when MODEL is busy
 FAST_MODEL = os.getenv("GROQ_FAST_MODEL", "openai/gpt-oss-20b")
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+# all-MiniLM-L6-v2 run with ONNX Runtime instead of PyTorch (~1 GB less memory)
+embeddings = MiniLMEmbeddings()
 
 # Everything Sage stores lives in backend/data (ignored by Git):
 #   data/chroma/          ChromaDB: one collection of chunks per uploaded document

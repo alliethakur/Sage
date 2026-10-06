@@ -13,34 +13,23 @@ that Sage shows as its citation.
 import csv
 import io
 
-from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from transformers import AutoTokenizer
+from pypdf import PdfReader
 
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+from embeddings import count_tokens  # the embedding model's own tokenizer (no PyTorch)
+
 CHUNK_TOKENS = 128      # well inside MiniLM's 256-token limit
 OVERLAP_TOKENS = 16     # small overlap so a sentence cut at a boundary isn't lost
 MAX_CSV_ROWS = 5000     # keeps indexing fast for large tables
 SUPPORTED = {".pdf": "pdf", ".txt": "text", ".md": "text", ".csv": "csv"}
 
-_tokenizer = None
-
-def tokenizer():
-    """The embedding model's own tokenizer, loaded once."""
-    global _tokenizer
-    if _tokenizer is None:
-        _tokenizer = AutoTokenizer.from_pretrained(EMBEDDING_MODEL)
-    return _tokenizer
-
-def count_tokens(text):
-    return len(tokenizer().encode(text, add_special_tokens=False))
-
 def prose_splitter():
-    return RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
-        tokenizer(),
+    # Recursive splitting (paragraphs, then sentences, then words), measured in tokens
+    return RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_TOKENS,
         chunk_overlap=OVERLAP_TOKENS,
+        length_function=count_tokens,
         add_start_index=True,
     )
 
@@ -65,7 +54,8 @@ def plural(n, word):
 # ---------- PDF ----------
 
 def load_pdf(path):
-    pages = PyPDFLoader(path).load()
+    pages = [Document(page_content=page.extract_text() or "", metadata={"page": i})
+             for i, page in enumerate(PdfReader(path).pages)]
     if not "".join(p.page_content for p in pages).strip():
         raise ValueError("This PDF appears to be scanned. Please upload a text-based PDF.")
 
