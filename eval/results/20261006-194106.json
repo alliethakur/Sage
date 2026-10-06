@@ -1,0 +1,252 @@
+{
+  "summaries": {
+    "hybrid": {
+      "answer_accuracy": [
+        1.0,
+        8
+      ],
+      "false_refusal_rate": [
+        0.0,
+        8
+      ],
+      "refusal_accuracy": [
+        1.0,
+        2
+      ],
+      "route_accuracy": [
+        1.0,
+        7
+      ],
+      "retrieval_hit_at_5": [
+        null,
+        0
+      ],
+      "citation_precision": [
+        null,
+        0
+      ],
+      "median_latency_s": [
+        2.41,
+        10
+      ],
+      "errors": [
+        0,
+        10
+      ]
+    }
+  },
+  "rows": [
+    {
+      "doc": "titanic",
+      "type": "answer",
+      "q": "How many passengers survived?",
+      "expect": [
+        "\\b342\\b"
+      ],
+      "route": "table_query",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "342 passengers survived.",
+      "route_got": "table_query",
+      "latency": 3.49,
+      "evidence_locations": []
+    },
+    {
+      "doc": "titanic",
+      "type": "answer",
+      "q": "How many survived, by sex?",
+      "expect": [
+        "\\b233\\b",
+        "\\b109\\b"
+      ],
+      "route": "table_query",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "There were **233 female** survivors and **109 male** survivors.  \n\n| Sex | count |\n|-----|-------|\n| female | 233 |\n| male   | 109 |",
+      "route_got": "table_query",
+      "latency": 3.86,
+      "evidence_locations": []
+    },
+    {
+      "doc": "titanic",
+      "type": "answer",
+      "q": "How many female passengers were in first class?",
+      "expect": [
+        "\\b94\\b"
+      ],
+      "route": "table_query",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "There were **94** female passengers in first class.",
+      "route_got": "table_query",
+      "latency": 3.5,
+      "evidence_locations": []
+    },
+    {
+      "doc": "titanic",
+      "type": "answer",
+      "q": "How many passengers were in third class?",
+      "expect": [
+        "\\b491\\b"
+      ],
+      "route": "table_query",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "491 passengers were in third class.",
+      "route_got": "table_query",
+      "latency": 1.76,
+      "evidence_locations": []
+    },
+    {
+      "doc": "titanic",
+      "type": "answer",
+      "q": "What fare did passenger 2 pay?",
+      "expect": [
+        "71\\.28"
+      ],
+      "route": "table_query",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "Passenger\u202f2 paid a fare of **71.2833**.",
+      "route_got": "table_query",
+      "latency": 2.28,
+      "evidence_locations": []
+    },
+    {
+      "doc": "titanic",
+      "type": "answer",
+      "q": "Who paid the highest fare?",
+      "expect": [
+        "cardeza|512\\.3"
+      ],
+      "route": "table_query",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "The passenger with the highest fare is **Row\u202f681** (PassengerId\u202f680), who paid a fare of **\\$512.33**.",
+      "route_got": "table_query",
+      "latency": 2.99,
+      "evidence_locations": []
+    },
+    {
+      "doc": "titanic",
+      "type": "answer",
+      "q": "What was the average age in each class?",
+      "expect": [
+        "38\\.2",
+        "29\\.(8|9)",
+        "25\\.1"
+      ],
+      "route": "table_query",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "The average age for each passenger class is:\n\n| Pclass | mean(Age) |\n|---|---|\n| 1 | 38.2334 |\n| 2 | 29.8776 |\n| 3 | 25.1406 |",
+      "route_got": "table_query",
+      "latency": 2.54,
+      "evidence_locations": []
+    },
+    {
+      "doc": "titanic",
+      "type": "answer",
+      "q": "How old was Mrs. Florence Briggs Thayer Cumings?",
+      "expect": [
+        "\\b38\\b"
+      ],
+      "error": null,
+      "refused": false,
+      "route_ok": null,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "Mrs. Florence\u202fBriggs\u202fThayer\u202fCumings was **38 years old**[1].",
+      "route_got": "document_question",
+      "latency": 1.21,
+      "evidence_locations": [
+        "Row 3",
+        "Row 520",
+        "Row 708",
+        "Row 583",
+        "Row 429"
+      ]
+    },
+    {
+      "doc": "titanic",
+      "type": "refuse",
+      "q": "What was the ship's top speed?",
+      "error": null,
+      "refused": true,
+      "route_ok": null,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "I couldn't find this in the document.",
+      "route_got": "document_question",
+      "latency": 0.89,
+      "evidence_locations": [
+        "Row 155",
+        "Row 466",
+        "Row 169",
+        "Row 47",
+        "Row 175"
+      ]
+    },
+    {
+      "doc": "titanic",
+      "type": "refuse",
+      "q": "Who was the captain of the Titanic?",
+      "error": null,
+      "refused": true,
+      "route_ok": null,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "I couldn't find this in the document.",
+      "route_got": "document_question",
+      "latency": 1.62,
+      "evidence_locations": [
+        "Row 864",
+        "Row 671",
+        "Row 822",
+        "Row 593",
+        "Row 500"
+      ]
+    }
+  ]
+}

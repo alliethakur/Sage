@@ -106,10 +106,23 @@ def parse_plan(text):
     return json.loads(match.group(0))
 
 
+def _norm(name):
+    """'Total (₹)' -> 'total', 'Unit Price' -> 'unitprice': letters and digits only."""
+    return re.sub(r"[^0-9a-z]", "", str(name).lower())
+
+
 def _check_column(df, col):
-    if col not in df.columns:
-        raise ValueError(f"Unknown column: {col!r}")
-    return col
+    """Return the real column name. Forgives small slips like 'Total' for 'Total (₹)'
+    or 'unit price' for 'Unit Price', but only when exactly one column fits."""
+    if col in df.columns:
+        return col
+    wanted = _norm(col)
+    if wanted:
+        for test in (lambda c: _norm(c) == wanted, lambda c: _norm(c).startswith(wanted)):
+            fits = [c for c in df.columns if test(c)]
+            if len(fits) == 1:
+                return fits[0]
+    raise ValueError(f"Unknown column: {col!r}. Real columns: {', '.join(map(str, df.columns))}")
 
 
 def _compare(series, op, value):
@@ -151,7 +164,8 @@ def run_plan(df, plan):
         op = f.get("op")
         if op not in OPS:
             raise ValueError(f"Operation not allowed: {op!r}")
-        mask &= _compare(df[_check_column(df, f.get("column"))], op, f.get("value"))
+        f["column"] = _check_column(df, f.get("column"))  # store the real name
+        mask &= _compare(df[f["column"]], op, f.get("value"))
     matched = df[mask]
 
     aggregate = plan.get("aggregate") or "list"
@@ -159,7 +173,7 @@ def run_plan(df, plan):
         raise ValueError(f"Aggregate not allowed: {aggregate!r}")
     column = plan.get("column")
     if column is not None:
-        _check_column(df, column)
+        column = plan["column"] = _check_column(df, column)
     if aggregate in {"sum", "mean", "min", "max"} and column is None:
         raise ValueError(f"'{aggregate}' needs a column.")
     limit = max(1, min(int(plan.get("limit") or MAX_ROWS), MAX_ROWS))
@@ -167,7 +181,7 @@ def run_plan(df, plan):
 
     group_by = plan.get("group_by")
     if group_by:
-        _check_column(df, group_by)
+        group_by = plan["group_by"] = _check_column(df, group_by)
         groups = matched.groupby(group_by, dropna=False)
         if aggregate in {"count", "list"}:
             series = groups.size()
@@ -190,7 +204,7 @@ def run_plan(df, plan):
     # "list": return the matching rows themselves
     sort = plan.get("sort")
     if sort and sort.get("column"):
-        _check_column(df, sort["column"])
+        sort["column"] = _check_column(df, sort["column"])
         matched = matched.sort_values(sort["column"], ascending=not sort.get("descending", False))
     shown = matched.head(limit)
     columns = list(df.columns) if column is None else [column]

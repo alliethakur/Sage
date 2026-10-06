@@ -551,10 +551,21 @@ def table_answer(state):
                 "add a filter for it. Reply with the corrected JSON plan only.",
                 effort="medium",
             ))
-        result = tables.run_plan(df, plan)
+        try:
+            result = tables.run_plan(df, plan)
+        except ValueError as e:
+            # The plan broke a rule (e.g. a misspelt column): show the model the error once
+            print(f"[table] plan rejected ({e}); asking for a fixed plan")
+            plan = tables.parse_plan(ask_llm(
+                f"{tables.PLAN_INSTRUCTIONS}\n\nTable:\n{tables.describe(df)}\n\nQuestion: {question}\n\n"
+                f"Your previous plan was: {json.dumps(plan)}\nIt failed with this error: {e}\n"
+                "Reply with the corrected JSON plan only.",
+                effort="medium",
+            ))
+            result = tables.run_plan(df, plan)
     except Exception as e:
         # A bad plan shouldn't break the chat: fall back to normal search
-        debug(f"[table] plan failed ({e}); falling back to search")
+        print(f"[table] plan failed ({e}); falling back to search")
         return {**retrieve_and_answer(state), "intent": "document_question"}
     debug(f"[table] plan={plan} matched={result['matched_rows']}")
 
