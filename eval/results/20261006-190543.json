@@ -1,0 +1,961 @@
+{
+  "summaries": {
+    "hybrid": {
+      "answer_accuracy": [
+        0.9285714285714286,
+        28
+      ],
+      "false_refusal_rate": [
+        0.03571428571428571,
+        28
+      ],
+      "refusal_accuracy": [
+        1.0,
+        8
+      ],
+      "route_accuracy": [
+        1.0,
+        29
+      ],
+      "retrieval_hit_at_5": [
+        1.0,
+        12
+      ],
+      "citation_precision": [
+        0.9545454545454546,
+        11
+      ],
+      "median_latency_s": [
+        4.035,
+        38
+      ],
+      "errors": [
+        0,
+        38
+      ]
+    }
+  },
+  "rows": [
+    {
+      "doc": "attention",
+      "type": "answer",
+      "q": "How many layers are in the encoder?",
+      "expect": [
+        "\\b(6|six)\\b"
+      ],
+      "pages": [
+        "Page 3"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": true,
+      "citation_precision": 1.0,
+      "mode": "hybrid",
+      "answer": "The encoder is built from **6 identical layers**[1][2].",
+      "route_got": "document_question",
+      "latency": 1.44,
+      "evidence_locations": [
+        "Page 3",
+        "Page 3",
+        "Page 5",
+        "Page 8",
+        "Page 13"
+      ]
+    },
+    {
+      "doc": "attention",
+      "type": "answer",
+      "q": "How many attention heads does the base model use?",
+      "expect": [
+        "\\b(8|eight)\\b"
+      ],
+      "pages": [
+        "Page 5",
+        "Page 9"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": true,
+      "citation_precision": 1.0,
+      "mode": "hybrid",
+      "answer": "The base Transformer model uses **8 attention heads**[1].",
+      "route_got": "document_question",
+      "latency": 1.73,
+      "evidence_locations": [
+        "Page 5",
+        "Page 5",
+        "Page 10",
+        "Page 15",
+        "Page 14"
+      ]
+    },
+    {
+      "doc": "attention",
+      "type": "answer",
+      "q": "What is d_model in the base model?",
+      "expect": [
+        "\\b512\\b"
+      ],
+      "pages": [
+        "Page 3",
+        "Page 5",
+        "Page 9"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": true,
+      "citation_precision": 1.0,
+      "mode": "hybrid",
+      "answer": "The base Transformer model uses a hidden dimension  \n\n**\\(d_{\\text{model}} = 512\\)**[5][4]",
+      "route_got": "document_question",
+      "latency": 1.29,
+      "evidence_locations": [
+        "Page 9",
+        "Page 6",
+        "Page 8",
+        "Page 5",
+        "Page 3"
+      ]
+    },
+    {
+      "doc": "attention",
+      "type": "answer",
+      "q": "What BLEU score did the big model get on English-German translation?",
+      "expect": [
+        "28\\.4"
+      ],
+      "pages": [
+        "Page 1",
+        "Page 8"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": true,
+      "route_ok": true,
+      "correct": false,
+      "hit_at_5": true,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "I couldn't find this in the document.",
+      "route_got": "document_question",
+      "latency": 1.36,
+      "evidence_locations": [
+        "Page 8",
+        "Page 8",
+        "Page 8",
+        "Page 1",
+        "Page 9"
+      ]
+    },
+    {
+      "doc": "attention",
+      "type": "answer",
+      "q": "What BLEU score did the big model get on English-French translation?",
+      "expect": [
+        "41\\.(0|8)"
+      ],
+      "pages": [
+        "Page 1",
+        "Page 8"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": true,
+      "citation_precision": 1.0,
+      "mode": "hybrid",
+      "answer": "The big model achieved a BLEU score of **41.8** on the WMT\u202f2014 English\u2011to\u2011French translation task[2].",
+      "route_got": "document_question",
+      "latency": 2.33,
+      "evidence_locations": [
+        "Page 8",
+        "Page 1",
+        "Page 8",
+        "Page 8",
+        "Page 8"
+      ]
+    },
+    {
+      "doc": "attention",
+      "type": "answer",
+      "q": "What hardware was used for training?",
+      "expect": [
+        "p100"
+      ],
+      "pages": [
+        "Page 7",
+        "Page 8"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": true,
+      "citation_precision": 1.0,
+      "mode": "hybrid",
+      "answer": "The models were trained on a single machine equipped with **8 NVIDIA\u202fP100 GPUs**[1].",
+      "route_got": "document_question",
+      "latency": 2.38,
+      "evidence_locations": [
+        "Page 7",
+        "Page 8",
+        "Page 7",
+        "Page 7",
+        "Page 8"
+      ]
+    },
+    {
+      "doc": "attention",
+      "type": "answer",
+      "q": "How long did the big model train?",
+      "expect": [
+        "3\\.5\\s*days|300,?000"
+      ],
+      "pages": [
+        "Page 7",
+        "Page 8"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": true,
+      "citation_precision": 1.0,
+      "mode": "hybrid",
+      "answer": "The big model was trained for **3.5 days** (approximately 300,000 steps) on 8\u202fP100 GPUs[2][4].",
+      "route_got": "document_question",
+      "latency": 1.49,
+      "evidence_locations": [
+        "Page 7",
+        "Page 7",
+        "Page 8",
+        "Page 8",
+        "Page 8"
+      ]
+    },
+    {
+      "doc": "attention",
+      "type": "answer",
+      "q": "What optimizer did they use?",
+      "expect": [
+        "adam"
+      ],
+      "pages": [
+        "Page 7"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": true,
+      "citation_precision": 1.0,
+      "mode": "hybrid",
+      "answer": "They used the **Adam optimizer**[1].",
+      "route_got": "document_question",
+      "latency": 1.15,
+      "evidence_locations": [
+        "Page 7",
+        "Page 4",
+        "Page 8",
+        "Page 11",
+        "Page 7"
+      ]
+    },
+    {
+      "doc": "attention",
+      "type": "answer",
+      "q": "What are warmup steps set to?",
+      "expect": [
+        "4,?000"
+      ],
+      "pages": [
+        "Page 7"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": true,
+      "citation_precision": 1.0,
+      "mode": "hybrid",
+      "answer": "The warmup steps are set to **4000**[1].",
+      "route_got": "document_question",
+      "latency": 1.15,
+      "evidence_locations": [
+        "Page 7",
+        "Page 7",
+        "Page 2",
+        "Page 7",
+        "Page 9"
+      ]
+    },
+    {
+      "doc": "attention",
+      "type": "answer",
+      "q": "What dropout rate was used for the base model?",
+      "expect": [
+        "0\\.1"
+      ],
+      "pages": [
+        "Page 7",
+        "Page 8",
+        "Page 9"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": true,
+      "citation_precision": 1.0,
+      "mode": "hybrid",
+      "answer": "The base model used a dropout rate of **0.1**[1][5].",
+      "route_got": "document_question",
+      "latency": 1.25,
+      "evidence_locations": [
+        "Page 8",
+        "Page 8",
+        "Page 9",
+        "Page 7",
+        "Page 9"
+      ]
+    },
+    {
+      "doc": "attention",
+      "type": "answer",
+      "q": "Why do they scale the dot products by the square root of d_k?",
+      "expect": [
+        "gradient|large|softmax"
+      ],
+      "pages": [
+        "Page 4"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": true,
+      "citation_precision": 1.0,
+      "mode": "hybrid",
+      "answer": "They scale the dot products by \\(1/\\sqrt{d_k}\\) because, as the dimensionality \\(d_k\\) grows, the raw dot products become large in magnitude. This pushes the soft\u2011max into regions with extremely small gradients, which harms learning. Dividing by \\(\\sqrt{d_k}\\) counteracts that effect and keeps the soft\u2011max inputs in a well\u2011behaved range[4].",
+      "route_got": "document_question",
+      "latency": 3.29,
+      "evidence_locations": [
+        "Page 4",
+        "Page 4",
+        "Page 4",
+        "Page 4",
+        "Page 7"
+      ]
+    },
+    {
+      "doc": "attention",
+      "type": "answer",
+      "q": "Why did they choose sinusoidal positional encodings?",
+      "expect": [
+        "extrapolat|longer|relative position"
+      ],
+      "pages": [
+        "Page 6"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": false,
+      "hit_at_5": true,
+      "citation_precision": 0.5,
+      "mode": "hybrid",
+      "answer": "They chose sinusoidal positional encodings because they hypothesized that the sinusoid formulation would make it easy for the model to learn relative\u2011position relationships \u2013 for any fixed offset\u202fk, the encoding at position\u202fpos\u202f+\u202fk can be expressed as a linear function of the encoding at\u202fpos\u202f[1]. Additionally, experiments showed that learned positional embeddings produced nearly identical results, confirming that the sinusoidal version was sufficient [2].",
+      "route_got": "document_question",
+      "latency": 4.13,
+      "evidence_locations": [
+        "Page 6",
+        "Page 9",
+        "Page 6",
+        "Page 9",
+        "Page 5"
+      ]
+    },
+    {
+      "doc": "attention",
+      "type": "refuse",
+      "q": "How many parameters does GPT-3 have?",
+      "error": null,
+      "refused": true,
+      "route_ok": null,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "I couldn't find this in the document.",
+      "route_got": "document_question",
+      "latency": 1.95,
+      "evidence_locations": [
+        "Page 8",
+        "Page 13",
+        "Page 7",
+        "Page 5",
+        "Page 8"
+      ]
+    },
+    {
+      "doc": "attention",
+      "type": "refuse",
+      "q": "What is BERT's score on the GLUE benchmark?",
+      "error": null,
+      "refused": true,
+      "route_ok": null,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "I couldn't find this in the document.",
+      "route_got": "document_question",
+      "latency": 1.92,
+      "evidence_locations": [
+        "Page 8",
+        "Page 8",
+        "Page 4",
+        "Page 12",
+        "Page 9"
+      ]
+    },
+    {
+      "doc": "attention",
+      "type": "refuse",
+      "q": "What is the capital of France?",
+      "error": null,
+      "refused": true,
+      "route_ok": null,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "I couldn't find this in the document.",
+      "route_got": "document_question",
+      "latency": 0.51,
+      "evidence_locations": []
+    },
+    {
+      "doc": "attention",
+      "type": "refuse",
+      "q": "What is the population of Bengaluru?",
+      "error": null,
+      "refused": true,
+      "route_ok": null,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "I couldn't find this in the document.",
+      "route_got": "document_question",
+      "latency": 0.44,
+      "evidence_locations": []
+    },
+    {
+      "doc": "attention",
+      "type": "answer",
+      "q": "Who are the authors of this paper?",
+      "expect": [
+        "vaswani",
+        "shazeer"
+      ],
+      "route": "overview",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "**Authors**\n\n- Ashish Vaswani\u202f\u2217  \n- Noam Shazeer\u202f\u2217  \n- Niki Parmar\u202f\u2217  \n- Jakob Uszkoreit\u202f\u2217  \n- Llion Jones\u202f\u2217  \n- Aidan N.\u00a0Gomez\u202f\u2217\u202f\u2020  \n- \u0141ukasz Kaiser\u202f\u2217  \n- Illia Polosukhin\u202f\u2217\u202f\u2021",
+      "route_got": "overview",
+      "latency": 4.29,
+      "evidence_locations": []
+    },
+    {
+      "doc": "attention",
+      "type": "answer",
+      "q": "What is the main idea of this paper?",
+      "expect": [
+        "transformer",
+        "attention"
+      ],
+      "route": "overview",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "**Main idea**\n\nThe paper introduces the **Transformer**, a new neural network architecture that **eliminates recurrence and convolution entirely and relies only on attention mechanisms** (specifically self\u2011attention and multi\u2011head attention) to model global dependencies between input and output sequences. This design enables much greater parallelization and achieves state\u2011of\u2011the\u2011art translation performance with significantly reduced training time.",
+      "route_got": "overview",
+      "latency": 8.21,
+      "evidence_locations": []
+    },
+    {
+      "doc": "attention",
+      "type": "casual",
+      "q": "hi",
+      "route": "casual",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": null,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "Hey there! How can I help you explore the document you\u2019ve uploaded?",
+      "route_got": "casual",
+      "latency": 1.05,
+      "evidence_locations": []
+    },
+    {
+      "doc": "attention",
+      "type": "casual",
+      "q": "thanks!",
+      "route": "casual",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": null,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "You\u2019re welcome! Let me know if you\u2019d like to explore anything in your uploaded document.",
+      "route_got": "casual",
+      "latency": 1.0,
+      "evidence_locations": []
+    },
+    {
+      "doc": "alice",
+      "type": "answer",
+      "q": "What did the label on the bottle say?",
+      "expect": [
+        "drink me"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "The bottle was labeled **\u201cDRINK\u202fME.\u201d**[1]",
+      "route_got": "document_question",
+      "latency": 3.94,
+      "evidence_locations": [
+        "Lines 186\u2013192",
+        "Lines 731\u2013737",
+        "Lines 1\u20134",
+        "Lines 738\u2013740",
+        "Lines 206\u2013219"
+      ]
+    },
+    {
+      "doc": "alice",
+      "type": "answer",
+      "q": "What was written on the little cake?",
+      "expect": [
+        "eat me"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "The little cake bore the words **\u201cEAT\u202fME.\u201d**[3]",
+      "route_got": "document_question",
+      "latency": 5.38,
+      "evidence_locations": [
+        "Lines 880\u2013884",
+        "Lines 258\u2013268",
+        "Lines 251\u2013256",
+        "Lines 129\u2013132",
+        "Lines 1\u201314"
+      ]
+    },
+    {
+      "doc": "alice",
+      "type": "answer",
+      "q": "Who keeps shouting 'Off with her head'?",
+      "expect": [
+        "queen"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "The Queen repeatedly shouts \u201cOff with her head!\u201d during the chaotic game.\u202f[1][3]",
+      "route_got": "document_question",
+      "latency": 5.26,
+      "evidence_locations": [
+        "Lines 2106\u20132110",
+        "Lines 2042\u20132057",
+        "Lines 2371\u20132380",
+        "Lines 1\u201312",
+        "Lines 3326\u20133340"
+      ]
+    },
+    {
+      "doc": "alice",
+      "type": "answer",
+      "q": "What does the White Rabbit take out of its waistcoat-pocket?",
+      "expect": [
+        "watch"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "The White Rabbit takes a **watch** out of its waistcoat\u2011pocket[5].",
+      "route_got": "document_question",
+      "latency": 3.82,
+      "evidence_locations": [
+        "Lines 1\u20135",
+        "Lines 323\u2013325",
+        "Lines 696\u2013702",
+        "Lines 692\u2013693",
+        "Lines 74\u201380"
+      ]
+    },
+    {
+      "doc": "alice",
+      "type": "answer",
+      "q": "What is left behind when the Cheshire Cat vanishes?",
+      "expect": [
+        "grin"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "When the Cheshire Cat vanishes, its **grin stays behind** after the rest of its body has disappeared[3].",
+      "route_got": "document_question",
+      "latency": 4.18,
+      "evidence_locations": [
+        "Line 1548",
+        "Lines 2118\u20132126",
+        "Lines 1558\u20131565",
+        "Lines 1357\u20131365",
+        "Lines 1533\u20131546"
+      ]
+    },
+    {
+      "doc": "alice",
+      "type": "answer",
+      "q": "Who is at the mad tea-party with the Hatter?",
+      "expect": [
+        "march hare|dormouse"
+      ],
+      "route": "document_question",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "- The March Hare was sitting at the tea\u2011party with the Hatter. [1]  \n- A Dormouse was also present, sitting between the March Hare and the Hatter (as a cushion while asleep). [1]  \n- Alice was there as an observer of the scene. [1]",
+      "route_got": "document_question",
+      "latency": 6.89,
+      "evidence_locations": [
+        "Lines 1582\u20131591",
+        "Lines 3005\u20133014",
+        "Lines 1\u201314",
+        "Lines 1678\u20131688",
+        "Lines 1758\u20131768"
+      ]
+    },
+    {
+      "doc": "alice",
+      "type": "refuse",
+      "q": "What is the capital of France?",
+      "error": null,
+      "refused": true,
+      "route_ok": null,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "I couldn't find this in the document.",
+      "route_got": "document_question",
+      "latency": 4.96,
+      "evidence_locations": [
+        "Lines 342\u2013348",
+        "Lines 2640\u20132645",
+        "Lines 425\u2013431",
+        "Lines 664\u2013670",
+        "Lines 123\u2013128"
+      ]
+    },
+    {
+      "doc": "alice",
+      "type": "refuse",
+      "q": "Who wrote Hamlet?",
+      "error": null,
+      "refused": true,
+      "route_ok": null,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "I couldn't find this in the document.",
+      "route_got": "document_question",
+      "latency": 4.45,
+      "evidence_locations": [
+        "Lines 1\u20137",
+        "Lines 3172\u20133177",
+        "Lines 570\u2013576",
+        "Lines 3286\u20133293",
+        "Lines 3221\u20133228"
+      ]
+    },
+    {
+      "doc": "titanic",
+      "type": "answer",
+      "q": "How many passengers survived?",
+      "expect": [
+        "\\b342\\b"
+      ],
+      "route": "table_query",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "342 passengers survived.",
+      "route_got": "table_query",
+      "latency": 8.09,
+      "evidence_locations": []
+    },
+    {
+      "doc": "titanic",
+      "type": "answer",
+      "q": "How many survived, by sex?",
+      "expect": [
+        "\\b233\\b",
+        "\\b109\\b"
+      ],
+      "route": "table_query",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "342 passengers survived, with 233 females and 109 males.  \n\n| Sex | count |\n|---|---|\n| female | 233 |\n| male | 109 |",
+      "route_got": "table_query",
+      "latency": 5.24,
+      "evidence_locations": []
+    },
+    {
+      "doc": "titanic",
+      "type": "answer",
+      "q": "How many female passengers were in first class?",
+      "expect": [
+        "\\b94\\b"
+      ],
+      "route": "table_query",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "94 female passengers were in first class.",
+      "route_got": "table_query",
+      "latency": 7.87,
+      "evidence_locations": []
+    },
+    {
+      "doc": "titanic",
+      "type": "answer",
+      "q": "How many passengers were in third class?",
+      "expect": [
+        "\\b491\\b"
+      ],
+      "route": "table_query",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "There were **491** passengers in third class.",
+      "route_got": "table_query",
+      "latency": 8.23,
+      "evidence_locations": []
+    },
+    {
+      "doc": "titanic",
+      "type": "answer",
+      "q": "What fare did passenger 2 pay?",
+      "expect": [
+        "71\\.28"
+      ],
+      "route": "table_query",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "Passenger\u202f2 paid a fare of **71.2833**.",
+      "route_got": "table_query",
+      "latency": 8.81,
+      "evidence_locations": []
+    },
+    {
+      "doc": "titanic",
+      "type": "answer",
+      "q": "Who paid the highest fare?",
+      "expect": [
+        "cardeza|512\\.3"
+      ],
+      "route": "table_query",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "The highest fare in the dataset is $512.3292$, paid by the passenger in **Row\u202f681** (PassengerId\u202f680).",
+      "route_got": "table_query",
+      "latency": 10.23,
+      "evidence_locations": []
+    },
+    {
+      "doc": "titanic",
+      "type": "answer",
+      "q": "What was the average age in each class?",
+      "expect": [
+        "38\\.2",
+        "29\\.(8|9)",
+        "25\\.1"
+      ],
+      "route": "table_query",
+      "error": null,
+      "refused": false,
+      "route_ok": true,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "The average age for each class is:\n\n| Pclass | mean(Age) |\n|--------|-----------|\n| 1      | 38.2334   |\n| 2      | 29.8776   |\n| 3      | 25.1406   |",
+      "route_got": "table_query",
+      "latency": 5.74,
+      "evidence_locations": []
+    },
+    {
+      "doc": "titanic",
+      "type": "answer",
+      "q": "How old was Mrs. Florence Briggs Thayer Cumings?",
+      "expect": [
+        "\\b38\\b"
+      ],
+      "error": null,
+      "refused": false,
+      "route_ok": null,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "Mrs. Florence\u202fBriggs\u202fThayer\u202fCumings was **38 years old**[1].",
+      "route_got": "document_question",
+      "latency": 4.3,
+      "evidence_locations": [
+        "Row 3",
+        "Row 520",
+        "Row 708",
+        "Row 583",
+        "Row 429"
+      ]
+    },
+    {
+      "doc": "titanic",
+      "type": "refuse",
+      "q": "What was the ship's top speed?",
+      "error": null,
+      "refused": true,
+      "route_ok": null,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "I couldn't find this in the document.",
+      "route_got": "document_question",
+      "latency": 5.55,
+      "evidence_locations": [
+        "Row 47",
+        "Row 169",
+        "Row 466",
+        "Row 175",
+        "Row 650"
+      ]
+    },
+    {
+      "doc": "titanic",
+      "type": "refuse",
+      "q": "Who was the captain of the Titanic?",
+      "error": null,
+      "refused": true,
+      "route_ok": null,
+      "correct": true,
+      "hit_at_5": null,
+      "citation_precision": null,
+      "mode": "hybrid",
+      "answer": "I couldn't find this in the document.",
+      "route_got": "document_question",
+      "latency": 5.56,
+      "evidence_locations": [
+        "Row 864",
+        "Row 671",
+        "Row 822",
+        "Row 593",
+        "Row 500"
+      ]
+    }
+  ]
+}

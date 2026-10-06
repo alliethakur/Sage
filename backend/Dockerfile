@@ -2,8 +2,11 @@
 FROM python:3.11-slim
 
 RUN useradd -m -u 1000 user
+# MALLOC_ARENA_MAX / OMP_NUM_THREADS keep memory use low on the 512 MB free plan
 ENV HOME=/home/user \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    MALLOC_ARENA_MAX=2 \
+    OMP_NUM_THREADS=1
 
 WORKDIR /app
 COPY requirements.txt .
@@ -18,4 +21,4 @@ RUN python -c "from embeddings import MiniLMEmbeddings; MiniLMEmbeddings().embed
 
 # Hosts like Render pass the port in $PORT. One worker keeps the in-memory document
 # cache consistent; threads let several requests run at once.
-CMD gunicorn --workers 1 --threads 4 --timeout 180 --bind 0.0.0.0:${PORT:-7860} app:app
+CMD gunicorn --workers 1 --threads 2 --timeout 180 --bind 0.0.0.0:${PORT:-7860} app:app

@@ -10,7 +10,9 @@ from typing import TypedDict
 from rank_bm25 import BM25Okapi
 import snowballstemmer
 import groq
+import gc
 import json
+from collections import OrderedDict
 import time
 import os
 import re
@@ -79,7 +81,19 @@ def tokenize(text):
 
 # ---------- Document storage ----------
 
-_cache = {}  # doc_id -> loaded document (vector store, BM25 index, chunks, sections)
+# doc_id -> loaded document (vector store, BM25 index, chunks, sections).
+# Only the most recent few stay in memory (free hosting has 512 MB); older ones
+# are reloaded from disk if someone asks about them again.
+_cache = OrderedDict()
+CACHE_SIZE = 4
+
+
+def remember(doc_id, doc):
+    _cache[doc_id] = doc
+    _cache.move_to_end(doc_id)
+    while len(_cache) > CACHE_SIZE:
+        _cache.popitem(last=False)
+    return doc
 
 def is_valid_doc_id(doc_id):
     return isinstance(doc_id, str) and re.fullmatch(r"[0-9a-f]{32}", doc_id) is not None
@@ -95,8 +109,13 @@ def open_vector_store(doc_id):
 
 def load_document(doc_id):
     """Return a document from memory, or load it from disk (e.g. after a backend restart)."""
-    if doc_id in _cache:
-        return _cache[doc_id]
+    doc = _cache.get(doc_id)
+    if doc is not None:
+        try:
+            _cache.move_to_end(doc_id)
+        except KeyError:  # another request just dropped it from the cache
+            pass
+        return doc
     if not is_valid_doc_id(doc_id):
         return None
     meta_path = os.path.join(DOCS_DIR, f"{doc_id}.json")
@@ -126,8 +145,7 @@ def load_document(doc_id):
         "chunks": chunks,
         "bm25": BM25Okapi([tokenize(c.page_content) for c in chunks]),
     }
-    _cache[doc_id] = doc
-    return doc
+    return remember(doc_id, doc)
 
 
 def get_table(doc_id, doc):
@@ -189,14 +207,15 @@ def upload():
     with open(os.path.join(DOCS_DIR, f"{doc_id}.json"), "w", encoding="utf-8") as f:
         json.dump({"name": file.filename, "kind": kind, "stats": stats, "sections": sections}, f)
 
-    _cache[doc_id] = {
+    remember(doc_id, {
         "name": file.filename,
         "kind": kind,
         "sections": sections,
         "store": store,
         "chunks": chunks,
         "bm25": BM25Okapi([tokenize(c.page_content) for c in chunks]),
-    }
+    })
+    gc.collect()  # give back the memory used while reading and embedding the file
 
     return jsonify({
         "message": "File uploaded and processed successfully",
