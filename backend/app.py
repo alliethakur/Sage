@@ -22,7 +22,9 @@ from loaders import load_file, file_kind
 import tables
 
 app = Flask(__name__)
-CORS(app)
+# Which websites may call this API. Locally: anything. When deployed, set ALLOWED_ORIGINS
+# to the frontend's address (e.g. https://sage.vercel.app); several can be comma-separated.
+CORS(app, origins=[o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",")])
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
@@ -138,6 +140,11 @@ def get_table(doc_id, doc):
 
 
 # ---------- Routes ----------
+
+@app.route("/health")
+def health():
+    """Cheap check the frontend calls on load: wakes a sleeping server and confirms it's up."""
+    return jsonify({"status": "ok"})
 
 @app.route("/upload", methods=["POST"])
 def upload():

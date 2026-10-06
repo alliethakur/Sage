@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import "./sage.css";
-import { uploadPDF, askQuestion, summarizePDF } from "./services/api";
+import { uploadPDF, askQuestion, summarizePDF, wakeBackend } from "./services/api";
 import Sidebar from "./components/Sidebar";
 import TopBar from "./components/TopBar";
 import ChatArea from "./components/ChatArea";
@@ -31,6 +31,10 @@ function App() {
   const [selectedMsg, setSelectedMsg] = useState(null);
   const [activeCite, setActiveCite] = useState(null);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    wakeBackend(); // free hosting sleeps when idle; start waking it as soon as the page opens
+  }, []);
 
   useEffect(() => {
     try {

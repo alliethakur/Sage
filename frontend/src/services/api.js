@@ -7,8 +7,17 @@ async function request(path, options) {
     const res = await fetch(`${BASE}${path}`, options);
     return await res.json();
   } catch {
-    return { error: "Can't reach the Sage backend. Is it running?" };
+    return {
+      error:
+        "Can't reach Sage's server. It may be waking up (free hosting sleeps when idle), " +
+        "so wait a minute and try again.",
+    };
   }
+}
+
+// Called when the page loads: wakes the server early so the first real request is fast
+export function wakeBackend() {
+  fetch(`${BASE}/health`).catch(() => {});
 }
 
 export async function uploadPDF(file) {
