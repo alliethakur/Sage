@@ -38,7 +38,7 @@ embeddings = MiniLMEmbeddings()
 # Everything Sage stores lives in backend/data (ignored by Git):
 #   data/chroma/          ChromaDB: one collection of chunks per uploaded document
 #   data/docs/<id>.json   the document's name, type and text sections (for summary/overview)
-#   data/tables/<id>.csv  a copy of each uploaded CSV, for exact table queries
+#   data/tables/<id>.csv  a copy of each uploaded CSV (or Excel sheet as CSV), for exact table queries
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 CHROMA_DIR = os.path.join(DATA_DIR, "chroma")
@@ -172,7 +172,7 @@ def upload():
         return jsonify({"error": "No file received."}), 400
 
     if file_kind(file.filename) is None:
-        return jsonify({"error": "Only PDF, TXT, MD and CSV files are supported."}), 400
+        return jsonify({"error": "Only PDF, TXT, MD, CSV and Excel (.xlsx) files are supported."}), 400
 
     file.seek(0, 2)
     size = file.tell()
@@ -187,9 +187,9 @@ def upload():
     try:
         tmp.close()
         file.save(tmp.name)
-        kind, sections, chunks, stats = load_file(tmp.name, file.filename)
-        if kind == "csv":  # keep the full table for exact queries
-            shutil.copy(tmp.name, os.path.join(TABLES_DIR, f"{doc_id}.csv"))
+        # Tables (CSV / Excel) also get a clean CSV copy, for exact table queries
+        kind, sections, chunks, stats = load_file(
+            tmp.name, file.filename, table_out=os.path.join(TABLES_DIR, f"{doc_id}.csv"))
     except ValueError as e:
         return jsonify({"error": str(e)}), 422
     except Exception as e:

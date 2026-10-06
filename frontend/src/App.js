@@ -138,7 +138,7 @@ function App() {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.txt,.md,.csv"
+        accept=".pdf,.txt,.md,.csv,.xlsx,.xlsm"
         hidden
         onChange={(e) => {
           handleFile(e.target.files[0]);

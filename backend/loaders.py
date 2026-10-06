@@ -4,14 +4,20 @@ Each file type is split in the way that suits it:
   - PDF, TXT, MD (prose): recursive splitting measured in TOKENS of the embedding
     model, so every chunk fits inside MiniLM's 256-token window (anything longer
     is silently cut off by the model and never searched).
-  - CSV (tables): ROW-ATOMIC chunks. Rows are never split in half, and every chunk
+  - CSV and Excel (tables): ROW-ATOMIC chunks. An Excel sheet is first converted
+    to a clean CSV (title rows skipped, dates tidied), then handled like a CSV. Rows are never split in half, and every chunk
     repeats the column names so a row still makes sense on its own.
 
 Every chunk gets a human-readable `location` ("Page 7", "Lines 12-30", "Rows 2-9")
 that Sage shows as its citation.
 """
 import csv
+import datetime
 import io
+import os
+import shutil
+
+import pandas as pd
 
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -22,7 +28,8 @@ from embeddings import count_tokens  # the embedding model's own tokenizer (no P
 CHUNK_TOKENS = 128      # well inside MiniLM's 256-token limit
 OVERLAP_TOKENS = 16     # small overlap so a sentence cut at a boundary isn't lost
 MAX_CSV_ROWS = 5000     # keeps indexing fast for large tables
-SUPPORTED = {".pdf": "pdf", ".txt": "text", ".md": "text", ".csv": "csv"}
+SUPPORTED = {".pdf": "pdf", ".txt": "text", ".md": "text", ".csv": "csv",
+             ".xlsx": "excel", ".xlsm": "excel"}
 
 def prose_splitter():
     # Recursive splitting (paragraphs, then sentences, then words), measured in tokens
@@ -156,13 +163,90 @@ def load_csv(path):
     return sections, chunks, plural(total_rows, "row")
 
 
-def load_file(path, filename):
-    """Return (kind, sections, chunks, stats) for a supported file, or raise ValueError."""
+# ---------- Excel ----------
+
+def _cell(value):
+    """Turn one Excel cell into clean text (dates without 00:00:00, 5.0 -> 5)."""
+    if value is None or (not isinstance(value, str) and pd.isna(value)):
+        return ""
+    if isinstance(value, datetime.datetime):
+        if (value.hour, value.minute, value.second) == (0, 0, 0):
+            return value.strftime("%Y-%m-%d")
+        return value.strftime("%Y-%m-%d %H:%M")
+    if isinstance(value, datetime.date):
+        return value.isoformat()
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return " ".join(str(value).split())  # also flattens line breaks inside a cell
+
+
+def excel_to_csv(path, out_path):
+    """Convert the first non-empty sheet of an Excel file to a CSV.
+    Returns (sheet name, number of non-empty sheets)."""
+    try:
+        sheets = pd.read_excel(path, sheet_name=None, header=None, dtype=object)
+    except Exception:
+        raise ValueError("Could not open this Excel file. Try saving it again as .xlsx or CSV.")
+
+    usable = []
+    for name, df in sheets.items():
+        df = df.dropna(how="all").dropna(axis=1, how="all")  # drop empty rows and columns
+        if len(df) >= 2:
+            usable.append((name, df))
+    if not usable:
+        raise ValueError("This Excel file has no sheet with a header row and data.")
+    name, df = usable[0]
+
+    # Office sheets often start with a title ("Sales Report 2025") above the real table.
+    # The header is the first row (of the first 10) that fills at least half the columns.
+    filled = df.head(10).notna().sum(axis=1).tolist()
+    need = max(2, df.shape[1] / 2) if df.shape[1] > 1 else 1
+    header_at = next((i for i, n in enumerate(filled) if n >= need), 0)
+
+    header, seen = [], {}
+    for i, h in enumerate(df.iloc[header_at]):
+        h = _cell(h) or f"column_{i + 1}"
+        seen[h] = seen.get(h, 0) + 1
+        header.append(h if seen[h] == 1 else f"{h}_{seen[h]}")  # make duplicate names unique
+
+    rows = [[_cell(v) for v in row] for row in df.iloc[header_at + 1:].itertuples(index=False)]
+    rows = [r for r in rows if any(r)]
+    if not rows:
+        raise ValueError(f"Sheet '{name}' has a header row but no data.")
+
+    with open(out_path, "w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(header)
+        writer.writerows(rows)
+    return name, len(usable)
+
+
+def load_file(path, filename, table_out=None):
+    """Return (kind, sections, chunks, stats) for a supported file, or raise ValueError.
+    For tables (CSV / Excel), a clean CSV copy is written to table_out for exact queries."""
     kind = file_kind(filename)
     if kind is None:
-        raise ValueError("Only PDF, TXT, MD and CSV files are supported.")
-    loader = {"pdf": load_pdf, "text": load_text, "csv": load_csv}[kind]
-    sections, chunks, stats = loader(path)
+        raise ValueError("Only PDF, TXT, MD, CSV and Excel (.xlsx) files are supported.")
+
+    note = ""
+    if kind == "excel":
+        csv_path = path + ".csv"
+        try:
+            sheet, sheet_count = excel_to_csv(path, csv_path)
+            sections, chunks, stats = load_csv(csv_path)
+            if table_out:
+                shutil.copy(csv_path, table_out)
+        finally:
+            if os.path.exists(csv_path):
+                os.remove(csv_path)
+        note = f" · sheet '{sheet}'" + (f" (1 of {sheet_count})" if sheet_count > 1 else "")
+        kind = "csv"  # from here on, Sage treats it exactly like a CSV
+    else:
+        loader = {"pdf": load_pdf, "text": load_text, "csv": load_csv}[kind]
+        sections, chunks, stats = loader(path)
+        if kind == "csv" and table_out:
+            shutil.copy(path, table_out)
+
     if not chunks:
         raise ValueError("No readable text was found in this file.")
-    return kind, sections, chunks, stats
+    return kind, sections, chunks, stats + note
